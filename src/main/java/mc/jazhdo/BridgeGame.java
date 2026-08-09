@@ -49,6 +49,12 @@ public class BridgeGame extends Game {
     public BridgeGame(GameArgs args) {
         super(args);
     }
+    
+    @Override
+    public void attemptLeave(Player player) {
+        player.teleport(Bukkit.getWorld("world").getSpawnLocation());
+        handlePlayerLeave(player);
+    }
 
     @Override
     public boolean hasSpace() {
@@ -288,10 +294,8 @@ public class BridgeGame extends Game {
 
     // ----- Event Listeners -----
 
-    @Override
-    public void onPlayerQuit(PlayerQuitEvent event) {
+    private void handlePlayerLeave(Player player) {
         // Only handle player quits if its playtime when quits matter
-        Player player = event.getPlayer();
         if (currentState != State.WAITING) player.getInventory().clear();
         if (currentState != State.PLAYTIME || getTeam(player.getName()) == null) return;
 
@@ -302,13 +306,18 @@ public class BridgeGame extends Game {
         teams.put(team, playerlist);
 
         // Check if there are still enough players to play
-        List<Player> remaining = world.getPlayers(); 
+        List<Player> remaining = world.getPlayers();
         remaining.remove(player);
         if (currentState == State.PLAYTIME && (teams.get("Red").isEmpty() || teams.get("Blue").isEmpty())) {
             broadcast(ChatColor.RED + "Not enough players on a team, ending game.");
             if (!remaining.isEmpty()) endGame((getTeam(remaining.get(0).getName())));
             else endGame("Nobody");
         }
+    }
+
+    @Override
+    public void onPlayerQuit(PlayerQuitEvent event) {
+        handlePlayerLeave(event.getPlayer());
     }
 
     @Override

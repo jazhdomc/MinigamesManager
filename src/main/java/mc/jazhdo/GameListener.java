@@ -4,6 +4,7 @@ import java.io.File;
 
 import org.bukkit.Bukkit;
 import org.bukkit.World;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
@@ -28,7 +29,7 @@ public class GameListener implements Listener {
      * @param world The world to check for
      * @return The game that is playing in that world, or null if there is none
      */
-    private Game getGame(World world) {
+    public Game getGame(World world) {
         String worldName = world.getName();
         if (worldName.contains("Game")) {
             String[] parts = worldName.split("Game");
@@ -63,8 +64,15 @@ public class GameListener implements Listener {
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
-        Game game = getGame(event.getPlayer().getWorld());
-        if (game != null) game.onPlayerJoin(event);
+        Player player = event.getPlayer();
+        World world = player.getWorld();
+        if (world.getName().equals("world")) {
+            player.teleport(world.getSpawnLocation());
+        } else {
+            Game game = getGame(world);
+            if (game != null) game.onPlayerJoin(event);
+            else player.teleport(Bukkit.getWorld("world").getSpawnLocation());
+        }
     }
 
     @EventHandler

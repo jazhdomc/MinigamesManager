@@ -15,6 +15,7 @@ import org.bukkit.World;
 import org.bukkit.WorldCreator;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.FileConfiguration;
+import org.bukkit.entity.Player;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
@@ -98,6 +99,7 @@ public abstract class Game {
     // Required functions
     protected abstract boolean hasSpace();
     protected abstract void start();
+    protected abstract void attemptLeave(Player player);
 
     // Optional functions
     protected void onBlockBreak(BlockBreakEvent event) {}
