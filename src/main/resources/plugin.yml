@@ -7,7 +7,7 @@ website: https://github.com/jazhdomc/MinigamesManager
 
 permissions:
   minigames.join:
-    description: The ability to use the command /join to join games
+    description: The ability to use the command /join and /leave
     default: true
 
 commands:
@@ -15,4 +15,8 @@ commands:
     description: Joins a minigame
     usage: /join <game> <team_size>
     aliases: [enter]
+    permission: minigames.join
+  leave:
+    description: Leaves a minigame
+    usage: /leave
     permission: minigames.join
