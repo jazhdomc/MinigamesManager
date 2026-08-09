@@ -1,6 +1,5 @@
 package mc.jazhdo;
 
-import java.io.File;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -241,7 +240,7 @@ public class BridgeGame extends Game {
 
     private void resetWorld() {
         Bukkit.unloadWorld(world, false);
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> deleteFolder(new File(plugin.worldContainer, worldName)));
+        plugin.deleteOnUnload(worldName);
     }
 
     public void respawnPlayer(Player player) {

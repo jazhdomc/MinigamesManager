@@ -1,5 +1,8 @@
 package mc.jazhdo;
 
+import java.io.File;
+
+import org.bukkit.Bukkit;
 import org.bukkit.World;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -10,6 +13,7 @@ import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.world.WorldUnloadEvent;
 
 public class GameListener implements Listener {
     private final Minigames plugin;
@@ -73,5 +77,20 @@ public class GameListener implements Listener {
     public void onPlayerQuit(PlayerQuitEvent event) {
         Game game = getGame(event.getPlayer().getWorld());
         if (game != null) game.onPlayerQuit(event);
+    }
+
+    private void deleteFolder(File folder) {
+        File[] fileList = folder.listFiles();
+        if (fileList != null) 
+            for (File file : fileList) 
+                if (file.isDirectory()) deleteFolder(file);
+                else file.delete();
+        folder.delete();
+    }
+
+    @EventHandler
+    public void onWorldUnload(WorldUnloadEvent event) {
+        String worldName = event.getWorld().getName();
+        if (plugin.isWorld2Delete(worldName)) Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> deleteFolder(new File(plugin.worldContainer, worldName)));
     }
 }

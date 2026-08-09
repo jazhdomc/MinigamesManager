@@ -1,6 +1,7 @@
 package mc.jazhdo;
 
 import java.io.File;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +23,7 @@ public class Minigames extends JavaPlugin {
     private final List<Integer> supportedTeamSizes = List.of(1, 2, 5, 10);
     private final Map<String, Function<GameArgs, Game>> gameTypes = new HashMap<>();
     private final Map<String, Map<Integer, Game>> games = new HashMap<>();
+    private final List<String> worldDelete = new ArrayList<>();
     private Logger log;
     public File worldContainer;
 
@@ -115,6 +117,18 @@ public class Minigames extends JavaPlugin {
 
     public void setNull(String gameName, int index) {
         games.get(gameName).put(index, null);
+    }
+
+    public void deleteOnUnload(String worldName) {
+        worldDelete.add(worldName);
+    }
+
+    public boolean isWorld2Delete(String worldName) {
+        if (worldDelete.contains(worldName)) {
+            worldDelete.remove(worldName);
+            return true;
+        }
+        return false;
     }
 
     @Override
