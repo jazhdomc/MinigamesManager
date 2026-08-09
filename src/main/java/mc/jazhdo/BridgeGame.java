@@ -137,11 +137,12 @@ public class BridgeGame extends Game {
         Collections.shuffle(players);
         List<String> red = new ArrayList<>(), blue = new ArrayList<>();
         for (int i = 0; i < players.size(); i++) {
-            String team = (i < players.size() / 2) ? "Red" : "Blue";
+            boolean redTeam = (i < players.size() / 2);
+            String team = redTeam ? "Red" : "Blue";
             Player player = players.get(i);
             player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(ChatColor.valueOf(team.toUpperCase()) + "You are on Team " + team + "!"));
-            ("Red".equals(team) ? red : blue).add(player.getName());
-            respawnPlayer(player);
+            (redTeam ? red : blue).add(player.getName());
+            respawnPlayer(player, redTeam);
         }
         teams.put("Red", red);
         teams.put("Blue", blue);
@@ -239,14 +240,19 @@ public class BridgeGame extends Game {
     }
 
     public void respawnPlayer(Player player) {
+        String team = getTeam(player.getName());
+        if (team == null) return;
+        respawnPlayer(player, team.equals("Red"));
+    }
+
+    public void respawnPlayer(Player player, boolean redTeam) {
         // Reset health and food and saturation
         player.setHealth(20);
         player.setFoodLevel(20);
         player.setSaturation(20);
 
         // Reset player location
-        String team = getTeam(player.getName());
-        Location spawn = team.equals("Red") ?
+        Location spawn = redTeam ?
         new Location(world, gameConfig.getDouble("red.x"), gameConfig.getDouble("red.y"), gameConfig.getDouble("red.z"), (float) gameConfig.getDouble("red.yaw"), (float) gameConfig.getDouble("red.pitch")) :
         new Location(world, gameConfig.getDouble("blue.x"), gameConfig.getDouble("blue.y"), gameConfig.getDouble("blue.z"), (float) gameConfig.getDouble("blue.yaw"), (float) gameConfig.getDouble("blue.pitch"));
         player.teleport(spawn);
@@ -270,7 +276,7 @@ public class BridgeGame extends Game {
         playerInventory.setItem(3, new ItemStack(Material.BOW));
         playerInventory.setItem(4, new ItemStack(Material.COOKED_BEEF, 8));
         playerInventory.setItem(5, new ItemStack(Material.GOLDEN_APPLE, 8));
-        short clayColor = team.equals("red") ? (short) 14 : (short) 11;
+        short clayColor = redTeam ? (short) 14 : (short) 11;
         for (int i = 6; i < 9; i++) playerInventory.setItem(i, new ItemStack(Material.STAINED_CLAY, 64, clayColor));
         playerInventory.setItem(9, new ItemStack(Material.ARROW, 64));
         playerInventory.setItem(10, new ItemStack(Material.ARROW, 64));
@@ -282,14 +288,20 @@ public class BridgeGame extends Game {
     public void onPlayerQuit(PlayerQuitEvent event) {
         // Only handle player quits if its playtime when quits matter
         Player player = event.getPlayer();
-        player.getInventory().clear();
-        if (currentState == State.PLAYTIME && getTeam(player.getName()) == null) return;
+        if (currentState != State.WAITING) player.getInventory().clear();
+        if (currentState != State.PLAYTIME || getTeam(player.getName()) == null) return;
+
+        // Remove from teams list to check teams size
+        String playerName = player.getName(), team = getTeam(playerName);
+        List<String> playerlist = teams.get(team);
+        playerlist.remove(playerName);
+        teams.put(team, playerlist);
 
         // Check if there are still enough players to play
-        List<Player> remaining = world.getPlayers();
+        List<Player> remaining = world.getPlayers(); 
         remaining.remove(player);
-        if (currentState == State.PLAYTIME && remaining.size() < 2) {
-            broadcast(ChatColor.RED + "Not Enough Players, ending game.");
+        if (currentState == State.PLAYTIME && (teams.get("Red").isEmpty() || teams.get("Blue").isEmpty())) {
+            broadcast(ChatColor.RED + "Not enough players on a team, ending game.");
             if (!remaining.isEmpty()) endGame((getTeam(remaining.get(0).getName())));
             else endGame("Nobody");
         }
@@ -297,7 +309,7 @@ public class BridgeGame extends Game {
 
     @Override
     public void onPlayerMove(PlayerMoveEvent event) {
-        // Only check on differences between blocks
+        // Only check if you actually move
         if (event.getFrom().getBlockX() == event.getTo().getBlockX() && event.getFrom().getBlockY() == event.getTo().getBlockY() && event.getFrom().getBlockZ() == event.getTo().getBlockZ()) return;
 
         // Simulate void

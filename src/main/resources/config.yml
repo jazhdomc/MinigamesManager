@@ -3,6 +3,13 @@
 # BridgeGame configuration
 bridge:
   # Spawn location for each world
+  spawn:
+    x: 0
+    y: 106
+    z: 0
+    yaw: 90
+    pitch: 0
+
   # How many points one team has to get to win
   winning-score: 5
 
@@ -13,7 +20,7 @@ bridge:
 
     # Half lengths are the distance from the center block to the edge (not including the center)
     x-half-length: 2
-    y-half-length: 2
+    z-half-length: 2
 
   # Cage locations (What your coordinates say when you stand on the center block of the cage)
   red-cage-location:
