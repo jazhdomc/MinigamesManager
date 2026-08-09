@@ -127,6 +127,7 @@ public class Minigames extends JavaPlugin {
 
         // Setup listeners
         getCommand("join").setExecutor(new Commands(this));
+        getServer().getPluginManager().registerEvents(new GameListener(this), this);
 
         // Setup games
         gameTypes.put("Bridge", BridgeGame::new);

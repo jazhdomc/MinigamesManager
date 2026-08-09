@@ -2,6 +2,7 @@ package mc.jazhdo;
 
 import org.bukkit.World;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
@@ -10,7 +11,7 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
-public class GameListener {
+public class GameListener implements Listener {
     private final Minigames plugin;
 
     public GameListener(Minigames plugin) {
