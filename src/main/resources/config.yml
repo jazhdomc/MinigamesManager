@@ -2,6 +2,7 @@
 
 # BridgeGame configuration
 bridge:
+  # Spawn location for each world
   # How many points one team has to get to win
   winning-score: 5
 

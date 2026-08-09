@@ -349,16 +349,18 @@ public class BridgeGame extends Game {
 
     @Override
     public void onPlayerDeath(PlayerDeathEvent event) {
-        Player player = event.getEntity();
-
         event.setDeathMessage(null);
         event.getDrops().clear();
 
+        Player player = event.getEntity();
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             if (currentState != State.WAITING) {
                 player.spigot().respawn();
                 respawnPlayer(player);
-            } else player.teleport(spawnLoc);
+            } else {
+                player.spigot().respawn();
+                player.teleport(spawnLoc);
+            }
         }, 1L);
     }
 
