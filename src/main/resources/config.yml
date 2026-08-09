@@ -1,0 +1,61 @@
+# The configuration file for the MinigamesManager plugin developed by JazhdoMC
+
+# BridgeGame configuration
+bridge:
+  # How many points one team has to get to win
+  winning-score: 5
+
+  # How big each cage is
+  cage-size:
+    # Height is the entire height of the cage
+    height: 4
+
+    # Half lengths are the distance from the center block to the edge (not including the center)
+    x-half-length: 2
+    y-half-length: 2
+
+  # Cage locations (What your coordinates say when you stand on the center block of the cage)
+  red-cage-location:
+    x: 0
+    y: 98
+    z: -37
+  blue-cage-location:
+    x: 0
+    y: 98
+    z: 37
+
+  # How long each game lasts until it is ended by stalling
+  game-seconds-length: 900
+
+  # Separation line between the two teams (the center of the bridge)
+  center:
+    # Which axis the bridge is perpendicular is to (values: "Z" or "X")
+    axis: Z
+
+    # Value of that axis to separate the teams
+    value: 0
+
+  # Team Spawn Locations
+  red:
+    x: 0
+    y: 98
+    z: -37
+    yaw: 0
+    pitch: 0
+  blue:
+    x: 0
+    y: 98
+    z: 37
+    yaw: 180
+    pitch: 0
+
+  # Portal y-level (the y-level of the end-portal blocks that represent the goals)
+  portal-y: 91
+
+  # Void y-level (the y-level of the simulated void)
+  void-y: 83
+
+  # Maps to randomly select from
+  maps:
+    - BridgeMap1
+    - BridgeMap2
