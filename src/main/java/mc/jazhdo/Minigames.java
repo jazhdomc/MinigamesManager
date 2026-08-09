@@ -72,18 +72,22 @@ public class Minigames extends JavaPlugin {
                     // Make a new game in a existing spot if possible
                     for (int index : gameList.keySet())
                         if (gameList.get(index) == null) {
-                            gameList.put(index, gameClass.apply(new GameArgs(plugin, teamSize, index, args[0])));
+                            Game newGame = gameClass.apply(new GameArgs(plugin, teamSize, index, args[0]));
+                            gameList.put(index, newGame);
+                            player.teleport(newGame.getSpawnLocation());
                             return true;
                         }
 
                     // If there are no empty spots, create a new one
                     int index = gameList.keySet().size();
-                    gameList.put(index, gameClass.apply(new GameArgs(plugin, teamSize, index, args[0])));
+                    Game newGame = gameClass.apply(new GameArgs(plugin, teamSize, index, args[0]));
+                    gameList.put(index, newGame);
+                    player.teleport(newGame.getSpawnLocation());
                 } else 
                     switch (args.length) {
-                        case 0 -> sendInfo(player, "<game> argument required. (/join <game> <team_size>)");
-                        case 1 -> sendInfo(player, "<team_size> argument required. (/join " + args[0] + " <team_size>)");
-                        default -> sendInfo(player, "Too many arguments. Required amount: 2 (/join <game> <team_size>)");
+                        case 0 -> sendError(player, "<game> argument required. (/join <game> <team_size>)");
+                        case 1 -> sendError(player, "<team_size> argument required. (/join " + args[0] + " <team_size>)");
+                        default -> sendError(player, "Too many arguments. Required amount: 2 (/join <game> <team_size>)");
                     }
             } else sendError(sender, "This command can only be used as a player.");
 

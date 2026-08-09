@@ -41,7 +41,7 @@ import net.md_5.bungee.api.chat.TextComponent;
 
 public class BridgeGame extends Game {
     private enum State { WAITING, PLAYTIME, SCORES }
-    private State currentState;
+    private State currentState = State.WAITING;
     private Scoreboard scoreboard;
     private Objective objective;
     private BukkitTask timer;
