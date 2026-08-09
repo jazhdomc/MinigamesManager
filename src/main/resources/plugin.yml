@@ -1,5 +1,5 @@
 name: MinigamesManager
-version: 0.1.4
+version: 0.1.5
 main: mc.jazhdo.Minigames
 description: A plugin to manage minigames in JazhdoMC's minigames server
 author: Jazhdo

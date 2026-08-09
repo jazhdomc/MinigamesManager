@@ -45,6 +45,7 @@ public class BridgeGame extends Game {
     private Scoreboard scoreboard;
     private Objective objective;
     private BukkitTask timer;
+    private final BossBar bossBar = Bukkit.createBossBar(ChatColor.GOLD + "Time Left: 00:00", BarColor.RED, BarStyle.SOLID);
 
     public BridgeGame(GameArgs args) {
         super(args);
@@ -88,12 +89,12 @@ public class BridgeGame extends Game {
                         setupGame();
                         timer = new BukkitRunnable() {
                             int gameLength = gameConfig.getInt("game-seconds-length"), gameTimer = gameLength, winningScore = gameConfig.getInt("winning-score");
-                            BossBar bossBar = Bukkit.createBossBar(ChatColor.GOLD + "Time Left: " + Integer.toString(gameTimer/60) + ":" + Integer.toString(gameTimer%60), BarColor.RED, BarStyle.SOLID);
 
                             {
                                 // Setup
+                                bossBar.setTitle(ChatColor.GOLD + "Time Left: " + Integer.toString(gameTimer/60) + ":" + Integer.toString(gameTimer%60));
+                                bossBar.setProgress((double) gameTimer / (double) gameLength);
                                 for (Player p : world.getPlayers()) bossBar.addPlayer(p);
-                                bossBar.setProgress(gameTimer / gameLength);
                             }
 
                             @Override
@@ -108,8 +109,11 @@ public class BridgeGame extends Game {
                                 // Handle game timer
                                 if (gameTimer > 0) {
                                     gameTimer--;
-                                    bossBar.setTitle(ChatColor.GOLD + "Time Left: " + Integer.toString(gameTimer/60) + ":" + Integer.toString(gameTimer%60));
-                                    bossBar.setProgress(gameTimer / gameLength);
+                                    String seconds = Integer.toString(gameTimer%60), minutes = Integer.toString(gameTimer/60);
+                                    if (seconds.length() < 2) seconds = "0" + seconds;
+                                    if (minutes.length() < 2) minutes = "0" + minutes;
+                                    bossBar.setTitle(ChatColor.GOLD + "Time Left: " + minutes + ":" + seconds);
+                                    bossBar.setProgress((double) gameTimer / (double) gameLength);
                                 } else endGame("Stalling");
                             }
                         }.runTaskTimer(plugin, 0l, 20l);
@@ -224,6 +228,7 @@ public class BridgeGame extends Game {
         }
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
             // Reset game for all players
+            bossBar.removeAll();
             for (Player p : world.getPlayers()) {
                 p.setGameMode(GameMode.ADVENTURE);
                 p.getInventory().clear();
