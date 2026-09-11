@@ -148,7 +148,7 @@ public class Minigames extends JavaPlugin {
         exit.setItemMeta(exitMeta);
         bridgeGUI.setItem(0, exit);
         for (int i = 0; i < 4; i++) {
-            ItemStack gameType = new ItemStack(Material.SKULL_ITEM, i + 1, (short) 3);
+            ItemStack gameType = new ItemStack(Material.SKULL_ITEM, 1, (short) 3);
             ItemMeta gameTypeMeta = gameType.getItemMeta();
             String playersInType = Integer.toString(i + 1);
             gameTypeMeta.setDisplayName(ChatColor.RESET + "Play " + playersInType + "v" + playersInType);
@@ -199,6 +199,7 @@ public class Minigames extends JavaPlugin {
                 }
                 meta.setLore(List.of(ChatColor.RESET + "Open Lobbies: " + Integer.toString(open) + "/" + Integer.toString(total)));
                 item.setItemMeta(meta);
+                item.setAmount(total);
                 bridgeGUI.setItem(10 + (2 * i), item);
             }
             ItemStack pof = POFGUI.getItem(13);
@@ -210,6 +211,7 @@ public class Minigames extends JavaPlugin {
             }
             pofMeta.setLore(List.of(ChatColor.RESET + "Open Lobbies: " + Integer.toString(open) + "/" + Integer.toString(total)));
             pof.setItemMeta(pofMeta);
+            pof.setAmount(total);
             POFGUI.setItem(13, pof);
         }, 0l, 20l);
     }

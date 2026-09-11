@@ -18,9 +18,11 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -28,6 +30,7 @@ import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.world.WorldUnloadEvent;
+import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -224,21 +227,25 @@ public class GameListener implements Listener {
 
             // Add exit button
             player.getInventory().setItem(8, leave);
-        } else if (currentItem.isSimilar(plugin.quickSelectionMenu)) player.openInventory(quickSelectInv);
-        else if (currentItem.isSimilar(plugin.return2MainLobby)) player.chat("/hub");
-        else if (currentItem.isSimilar(leave)) runIfNonNullGetGame(player.getWorld(), g -> g.attemptLeave(player));
-        else return;
+        } else if (currentItem.isSimilar(plugin.quickSelectionMenu)) {
+            if (event.getClick() != ClickType.NUMBER_KEY) player.openInventory(quickSelectInv);
+        } else if (currentItem.isSimilar(plugin.return2MainLobby)) {
+            if (event.getClick() != ClickType.NUMBER_KEY) player.chat("/hub");
+        } else if (currentItem.isSimilar(leave)) {
+            if (event.getClick() != ClickType.NUMBER_KEY) runIfNonNullGetGame(player.getWorld(), g -> g.leaveGame(player));
+        } else return;
         event.setCancelled(true);
     }
 
-    // Item drops to catch menu buttons
+    // Hotbar menu button interaction
     @EventHandler
-    public void onPlayerDropItem(PlayerDropItemEvent event) {
-        ItemStack itemStack = event.getItemDrop().getItemStack();
+    public void onPlayerInteractEvent(PlayerInteractEvent event) {
+        if (event.getHand() != EquipmentSlot.HAND) return;
+        ItemStack itemStack = event.getItem();
         Player player = event.getPlayer();
         if (itemStack.isSimilar(plugin.quickSelectionMenu)) player.openInventory(quickSelectInv);
         else if (itemStack.isSimilar(plugin.return2MainLobby)) player.chat("/hub");
-        else if (itemStack.isSimilar(leave)) runIfNonNullGetGame(player.getWorld(), g -> g.attemptLeave(player));
+        else if (itemStack.isSimilar(leave)) runIfNonNullGetGame(player.getWorld(), g -> g.leaveGame(player));
         else return;
         event.setCancelled(true);
     }
@@ -254,6 +261,13 @@ public class GameListener implements Listener {
     public void onPlayerSwapHand(PlayerSwapHandItemsEvent event) {
         List<ItemStack> forbiddenSwitchList = List.of(plugin.quickSelectionMenu, plugin.return2MainLobby, leave);
         if (itemStackListContains(forbiddenSwitchList, event.getMainHandItem()) || itemStackListContains(forbiddenSwitchList, event.getOffHandItem())) event.setCancelled(true);
+    }
+
+    // Catch item drops if they are menu buttons
+    @EventHandler 
+    public void onPlayerItemDrop(PlayerDropItemEvent event) {
+        List<ItemStack> forbiddenSwitchList = List.of(plugin.quickSelectionMenu, plugin.return2MainLobby, leave);
+        if (itemStackListContains(forbiddenSwitchList, event.getItemDrop().getItemStack())) event.setCancelled(true);
     }
 
     @EventHandler

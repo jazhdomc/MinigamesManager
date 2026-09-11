@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.logging.Logger;
 
 import org.bukkit.Bukkit;
+import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.WorldCreator;
@@ -106,6 +107,12 @@ public abstract class Game {
     protected void resetWorld() {
         Bukkit.unloadWorld(world, false);
         plugin.deleteOnUnload(worldName);
+    }
+    public void leaveGame(Player player) {
+        player.teleport(Bukkit.getWorld("world").getSpawnLocation());
+        player.setGameMode(GameMode.ADVENTURE);
+        player.getInventory().clear();
+        attemptLeave(player);
     }
 
     // Required functions

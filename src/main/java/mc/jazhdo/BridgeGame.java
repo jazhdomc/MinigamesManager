@@ -59,8 +59,24 @@ public class BridgeGame extends Game {
     
     @Override
     public void attemptLeave(Player player) {
-        player.teleport(Bukkit.getWorld("world").getSpawnLocation());
-        handlePlayerLeave(player);
+        // Only handle player quits if its playtime when quits matter
+        if (currentState != State.WAITING) player.getInventory().clear();
+        if (currentState != State.PLAYTIME || getTeam(player.getName()) == null) return;
+
+        // Remove from teams list to check teams size
+        String playerName = player.getName(), team = getTeam(playerName);
+        List<String> playerlist = teams.get(team);
+        playerlist.remove(playerName);
+        teams.put(team, playerlist);
+
+        // Check if there are still enough players to play
+        List<Player> remaining = world.getPlayers();
+        remaining.remove(player);
+        if (currentState == State.PLAYTIME && (teams.get("Red").isEmpty() || teams.get("Blue").isEmpty())) {
+            broadcast(ChatColor.RED + "Not enough players on a team, ending game.");
+            if (!remaining.isEmpty()) endGame((getTeam(remaining.get(0).getName())));
+            else endGame("Nobody");
+        }
     }
 
     @Override
@@ -307,27 +323,6 @@ public class BridgeGame extends Game {
 
     // ----- Event Listeners -----
 
-    private void handlePlayerLeave(Player player) {
-        // Only handle player quits if its playtime when quits matter
-        if (currentState != State.WAITING) player.getInventory().clear();
-        if (currentState != State.PLAYTIME || getTeam(player.getName()) == null) return;
-
-        // Remove from teams list to check teams size
-        String playerName = player.getName(), team = getTeam(playerName);
-        List<String> playerlist = teams.get(team);
-        playerlist.remove(playerName);
-        teams.put(team, playerlist);
-
-        // Check if there are still enough players to play
-        List<Player> remaining = world.getPlayers();
-        remaining.remove(player);
-        if (currentState == State.PLAYTIME && (teams.get("Red").isEmpty() || teams.get("Blue").isEmpty())) {
-            broadcast(ChatColor.RED + "Not enough players on a team, ending game.");
-            if (!remaining.isEmpty()) endGame((getTeam(remaining.get(0).getName())));
-            else endGame("Nobody");
-        }
-    }
-
     @Override
     public String getMap() {
         List<String> maps = gameConfig.getStringList("maps");
@@ -336,7 +331,7 @@ public class BridgeGame extends Game {
 
     @Override
     public void onPlayerQuit(PlayerQuitEvent event) {
-        handlePlayerLeave(event.getPlayer());
+        attemptLeave(event.getPlayer());
     }
 
     @Override

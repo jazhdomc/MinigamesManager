@@ -41,8 +41,8 @@ public class PillarsOfFortune extends Game {
     private final ItemStack newGame, lobby;
     private Random random = new Random();
     private int countdown;
-    private Set<Player> alive = new LinkedHashSet<>(), dead = new LinkedHashSet<>();
-    private List<Location> spawns = new ArrayList<>();
+    private final Set<Player> alive = new LinkedHashSet<>(), dead = new LinkedHashSet<>();
+    private final List<Location> spawns = new ArrayList<>();
     private boolean countingDown = false;
     private final Location lobbySpawn;
     private final Scoreboard scoreboard;
@@ -623,7 +623,7 @@ public class PillarsOfFortune extends Game {
                                 @Override
                                 public void run() {
                                     count--;
-                                    if (count == 3) sendInfo("Teaming is against the rules.");
+                                    if (count == 3) sendInfo(ChatColor.RED + "Teaming is against the rules.");
                                     if (count > 0) sendInfo("Cages releasing in " + Integer.toString(count));
                                     else {
                                         this.cancel();
@@ -696,7 +696,7 @@ public class PillarsOfFortune extends Game {
 
             // Death message
             event.setDeathMessage(null);
-            sendInfo("Player " + player.getName() + " died.");
+            sendInfo(ChatColor.RED + "Player " + player.getName() + " died.");
 
             // Respawn
             scheduler.runTaskLater(plugin, () -> {
@@ -729,10 +729,8 @@ public class PillarsOfFortune extends Game {
             alive.remove(player);
             refreshScoreboard();
 
-            // Send alert & reset and teleport player
-            sendDM(player, "Leaving the Pillars of Fortune game...");
-            player.getInventory().clear();
-            player.teleport(lobbySpawn);
+            // Send alert & reset boss bar for player
+            sendDM(player, prefix + ChatColor.YELLOW + "Leaving the Pillars of Fortune game...");
             bossBar.removePlayer(player);
             sendInfo(ChatColor.YELLOW + "Player " + player.getName() + "has left.");
         }
@@ -767,6 +765,8 @@ public class PillarsOfFortune extends Game {
             // Change playercount
             Player player = event.getPlayer();
             alive.add(player);
+
+            refreshScoreboard();
 
             // Send alert
             sendInfo(ChatColor.YELLOW + "Player " + player.getName() + " has joined. " + ChatColor.AQUA + "(" + ChatColor.GOLD + Integer.toString(alive.size()) + "/8" + ChatColor.AQUA + ")");
@@ -807,7 +807,7 @@ public class PillarsOfFortune extends Game {
     }
 
     private void endGame(Player player) {
-        broadcastExcluding(player, prefix + ChatColor.GREEN + player.getName() + ChatColor.WHITE + " has won Pillars of Fortune!", prefix + ChatColor.GREEN + "You have won Pillars of Fortune!");
+        broadcastExcluding(player, prefix + ChatColor.GREEN + player.getName() + " has won Pillars of Fortune!", prefix + ChatColor.GREEN + "You have won Pillars of Fortune!");
         currentState = STATE.SCORES;
         generationLoop.cancel();
         new BukkitRunnable() {
@@ -825,7 +825,7 @@ public class PillarsOfFortune extends Game {
                         p.setGameMode(GameMode.ADVENTURE);
                     }
                     resetWorld();
-                } else broadcast(prefix + ChatColor.AQUA + "Teleporting you to the lobby in " + Integer.toString(count) + "...");
+                } else broadcast(prefix + ChatColor.WHITE + "Teleporting you to the lobby in " + Integer.toString(11 - count) + "...");
             }
         }.runTaskTimer(plugin, 0l, 20l);
     }
