@@ -19,7 +19,6 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
-import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
@@ -104,6 +103,10 @@ public abstract class Game {
     public byte[] getMetadata() {
         return metadata;
     }
+    protected void resetWorld() {
+        Bukkit.unloadWorld(world, false);
+        plugin.deleteOnUnload(worldName);
+    }
 
     // Required functions
     protected abstract boolean hasSpace();
@@ -120,7 +123,6 @@ public abstract class Game {
     protected void onPlayerMove(PlayerMoveEvent event) {}
     protected void onPlayerQuit(PlayerQuitEvent event) {}
     protected void onAsyncPlayerChat(AsyncPlayerChatEvent event) {}
-    protected void onInventoryClick(InventoryClickEvent event) {}
     protected void onPlayerTeleport(PlayerTeleportEvent event) {}
     protected void onPlayerRespawn(PlayerRespawnEvent event) {}
 }

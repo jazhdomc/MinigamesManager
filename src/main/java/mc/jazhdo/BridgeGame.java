@@ -71,7 +71,8 @@ public class BridgeGame extends Game {
     @Override
     public void start() {
         new BukkitRunnable() {
-            Integer countdownTimer = null, waitingTick = 0;
+            Integer countdownTimer = null;
+            int waitingTick = 0;
 
             @Override
             public void run() {
@@ -257,13 +258,8 @@ public class BridgeGame extends Game {
                 p.setScoreboard(Bukkit.getScoreboardManager().getNewScoreboard());
                 p.teleport(Bukkit.getWorld("world").getSpawnLocation());
             }
+            resetWorld();
         }, 100L);
-        resetWorld();
-    }
-
-    private void resetWorld() {
-        Bukkit.unloadWorld(world, false);
-        plugin.deleteOnUnload(worldName);
     }
 
     public void respawnPlayer(Player player) {

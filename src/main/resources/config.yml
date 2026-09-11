@@ -75,20 +75,18 @@ pillarsoffortune:
     x: 0.5
     y: 67
     z: 0.5
-    yaw:
-    pitch:
+    yaw: 0
+    pitch: 0
 
   # Maps to select from
   maps:
-    - LuckyTowerMap1
+    - PillarsOfFortuneMap1
+    - PillarsOfFortuneMap2
 
   # Positions of the patterns of the tower ([-x, -z], [-x, z], [x, z], [x, -z], [z, x], [z, -x], [-z, x], [-z, -x])
   position:
     x: 6
     z: 14
   
-  # The y-level of the ground (Where players walk)
-  ground: 
-
   # The y-level above the top of the towers where players spawn
-  player: 
+  player: 100

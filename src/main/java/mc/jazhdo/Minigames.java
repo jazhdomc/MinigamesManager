@@ -52,6 +52,11 @@ public class Minigames extends JavaPlugin {
 
             // Make sure sender is a player
             if (sender instanceof Player player) {
+                if (listener.getGame(player.getWorld()) != null) {
+                    sendError(player, "You cannot use this command while in a game.");
+                    return true;
+                }
+
                 // Validate arguments
                 switch (args.length) {
                     case 1 -> {
@@ -126,7 +131,6 @@ public class Minigames extends JavaPlugin {
         // Setup listeners
         Commands commands = new Commands(this);
         getCommand("join").setExecutor(commands);
-        getCommand("leave").setExecutor(commands);
         listener = new GameListener(this);
         getServer().getPluginManager().registerEvents(listener, this);
 
@@ -153,7 +157,6 @@ public class Minigames extends JavaPlugin {
             bridgeGUI.setItem(10 + (2 * i), gameType);
         }
         selectionMenus.put("Bridge", bridgeGUI);
-        
         Inventory POFGUI = Bukkit.createInventory(null, 27, "Pillars of Fortune");
         POFGUI.setItem(0, exit);
         ItemStack icon = new ItemStack(Material.IRON_FENCE);
@@ -164,7 +167,10 @@ public class Minigames extends JavaPlugin {
         POFGUI.setItem(13, icon);
         selectionMenus.put("PillarsOfFortune", POFGUI);
 
+        // World container
         worldContainer = Bukkit.getWorldContainer();
+
+        // Quick select & main lobby hotbar interface items
         quickSelectionMenu = new ItemStack(Material.EMPTY_MAP);
         ItemMeta quickSelectionMenuMeta = quickSelectionMenu.getItemMeta();
         quickSelectionMenuMeta.setDisplayName(ChatColor.RESET + "Quick Select");
@@ -176,6 +182,7 @@ public class Minigames extends JavaPlugin {
         return2MainLobbyMeta.setLore(List.of(ChatColor.RESET + "Teleports you to the main lobby."));
         return2MainLobby.setItemMeta(return2MainLobbyMeta);
 
+        // Open lobby count update loop
         Bukkit.getScheduler().runTaskTimer(this, () -> {
             for (int i = 0; i < 4; i++) {
                 ItemStack item = bridgeGUI.getItem(10 + (2 * i));
@@ -191,6 +198,8 @@ public class Minigames extends JavaPlugin {
                     }
                 }
                 meta.setLore(List.of(ChatColor.RESET + "Open Lobbies: " + Integer.toString(open) + "/" + Integer.toString(total)));
+                item.setItemMeta(meta);
+                bridgeGUI.setItem(10 + (2 * i), item);
             }
             ItemStack pof = POFGUI.getItem(13);
             ItemMeta pofMeta = pof.getItemMeta();
@@ -200,7 +209,9 @@ public class Minigames extends JavaPlugin {
                 total++; 
             }
             pofMeta.setLore(List.of(ChatColor.RESET + "Open Lobbies: " + Integer.toString(open) + "/" + Integer.toString(total)));
-        }, 0l, 1l);
+            pof.setItemMeta(pofMeta);
+            POFGUI.setItem(13, pof);
+        }, 0l, 20l);
     }
     
     @Override

@@ -4,6 +4,7 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Consumer;
 import java.util.function.Function;
 
 import org.bukkit.Bukkit;
@@ -19,10 +20,12 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
+import org.bukkit.event.player.PlayerDropItemEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.event.player.PlayerSwapHandItemsEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
 import org.bukkit.event.world.WorldUnloadEvent;
 import org.bukkit.inventory.Inventory;
@@ -44,10 +47,10 @@ public class GameListener implements Listener {
         leave = new ItemStack(Material.BARRIER);
         ItemMeta leaveMeta = leave.getItemMeta();
         leaveMeta.setDisplayName(ChatColor.RESET + "" + ChatColor.RED + "Leave");
-        leaveMeta.setLore(List.of(ChatColor.RESET + "Leaves the current Pillars of Fortune game."));
+        leaveMeta.setLore(List.of(ChatColor.RESET + "Leaves the current minigame."));
         leave.setItemMeta(leaveMeta);
 
-        // Back button
+        // Back button (unused)
         back2QuickSelect = new ItemStack(Material.BARRIER);
         ItemMeta back2QuickSelectMeta = back2QuickSelect.getItemMeta();
         back2QuickSelectMeta.setDisplayName(ChatColor.RESET + "Back");
@@ -61,12 +64,12 @@ public class GameListener implements Listener {
         bridgeMeta.setDisplayName(ChatColor.RESET + "Bridge");
         bridgeMeta.setLore(List.of(ChatColor.RESET + "The Bridge game from Hypixel, remade."));
         bridge.setItemMeta(bridgeMeta);
+        quickSelectInv.setItem(11, bridge);
         ItemStack pillarsOfFortune = new ItemStack(Material.STICK);
         ItemMeta pillarsOfFortuneMeta = pillarsOfFortune.getItemMeta();
         pillarsOfFortuneMeta.setDisplayName("Pillars of Fortune");
         pillarsOfFortuneMeta.setLore(List.of(ChatColor.RESET + "The popular POF game."));
         pillarsOfFortune.setItemMeta(pillarsOfFortuneMeta);
-        quickSelectInv.setItem(11, bridge);
         quickSelectInv.setItem(15, pillarsOfFortune);
     }
     
@@ -81,28 +84,35 @@ public class GameListener implements Listener {
         else return null;
     }
 
+    /**
+     * A newer version of getGame() that takes in the function to run if the world is a game world
+     * 
+     * @param world The world to check if it is a game world for
+     * @param lambdaFunction The function to run if the world is a game world
+     */
+    public void runIfNonNullGetGame(World world, Consumer<Game> lambdaFunction) {
+        Game game = getGame(world);
+        if (game != null) lambdaFunction.accept(game);
+    }
+
     @EventHandler
     public void onBlockBreak(BlockBreakEvent event) {
-        Game game = getGame(event.getBlock().getWorld());
-        if (game != null) game.onBlockBreak(event);
+        runIfNonNullGetGame(event.getBlock().getWorld(), g -> g.onBlockBreak(event));
     }
 
     @EventHandler
     public void onBlockPlace(BlockPlaceEvent event) {
-        Game game = getGame(event.getBlock().getWorld());
-        if (game != null) game.onBlockPlace(event);
+        runIfNonNullGetGame(event.getBlock().getWorld(), g -> g.onBlockPlace(event));
     }
 
     @EventHandler
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
-        Game game = getGame(event.getEntity().getWorld());
-        if (game != null) game.onEntityDamageByEntity(event);
+        runIfNonNullGetGame(event.getEntity().getWorld(), g -> g.onEntityDamageByEntity(event));
     }
 
     @EventHandler
     public void onPlayerDeath(PlayerDeathEvent event) {
-        Game game = getGame(event.getEntity().getWorld());
-        if (game != null) game.onPlayerDeath(event);
+        runIfNonNullGetGame(event.getEntity().getWorld(), g -> g.onPlayerDeath(event));
     }
 
     @EventHandler
@@ -119,41 +129,37 @@ public class GameListener implements Listener {
 
     @EventHandler
     public void onPlayerMove(PlayerMoveEvent event) {
-        Game game = getGame(event.getFrom().getWorld());
-        if (game != null) game.onPlayerMove(event);
+        runIfNonNullGetGame(event.getFrom().getWorld(), g -> g.onPlayerMove(event));
     }
 
     @EventHandler
     public void onPlayerQuit(PlayerQuitEvent event) {
-        Game game = getGame(event.getPlayer().getWorld());
-        if (game != null) game.onPlayerQuit(event);
+        runIfNonNullGetGame(event.getPlayer().getWorld(), g -> g.onPlayerQuit(event));
     }
 
     @EventHandler
     public void onAsyncPlayerChat(AsyncPlayerChatEvent event) {
-        Game game = getGame(event.getPlayer().getWorld());
-        if (game != null) game.onAsyncPlayerChat(event);
+        runIfNonNullGetGame(event.getPlayer().getWorld(), g -> g.onAsyncPlayerChat(event));
     }
 
     @EventHandler
     public void onPlayerRespawn(PlayerRespawnEvent event) {
-        Game game = getGame(event.getPlayer().getWorld());
-        if (game != null) game.onPlayerRespawn(event);
+        runIfNonNullGetGame(event.getPlayer().getWorld(), g -> g.onPlayerRespawn(event));
     }
 
+    // Inventory clicks for GUIs specifically
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         Inventory inv = event.getInventory();
         ItemStack currentItem = event.getCurrentItem();
         Player player = (Player) event.getWhoClicked();
         if (plugin.selectionMenus.containsValue(inv)) {
-            event.setCancelled(true);
             // Handle exit slot
             int slot = event.getSlot();
             if (slot == 0) {
-                if (currentItem == plugin.exit) player.closeInventory();
-                else if (currentItem == back2QuickSelect) {
-
+                if (currentItem.isSimilar(plugin.exit)) player.closeInventory();
+                else if (currentItem.isSimilar(back2QuickSelect)) {
+                    // Unused item
                 }
                 return;
             }
@@ -218,34 +224,51 @@ public class GameListener implements Listener {
 
             // Add exit button
             player.getInventory().setItem(8, leave);
-        } else if (currentItem == plugin.quickSelectionMenu) {
-            event.setCancelled(true);
-            player.openInventory(quickSelectInv);
-        } else if (currentItem == plugin.return2MainLobby) {
-            event.setCancelled(true);
-            
-        } else {
-            Game game = getGame(player.getWorld());
-            if (game != null) {
-                event.setCancelled(true);
-                if (currentItem == leave) game.attemptLeave(player);
-                else game.onInventoryClick(event);
-            }
-        }
+        } else if (currentItem.isSimilar(plugin.quickSelectionMenu)) player.openInventory(quickSelectInv);
+        else if (currentItem.isSimilar(plugin.return2MainLobby)) player.chat("/hub");
+        else if (currentItem.isSimilar(leave)) runIfNonNullGetGame(player.getWorld(), g -> g.attemptLeave(player));
+        else return;
+        event.setCancelled(true);
+    }
+
+    // Item drops to catch menu buttons
+    @EventHandler
+    public void onPlayerDropItem(PlayerDropItemEvent event) {
+        ItemStack itemStack = event.getItemDrop().getItemStack();
+        Player player = event.getPlayer();
+        if (itemStack.isSimilar(plugin.quickSelectionMenu)) player.openInventory(quickSelectInv);
+        else if (itemStack.isSimilar(plugin.return2MainLobby)) player.chat("/hub");
+        else if (itemStack.isSimilar(leave)) runIfNonNullGetGame(player.getWorld(), g -> g.attemptLeave(player));
+        else return;
+        event.setCancelled(true);
+    }
+
+    // Checks whether or not the containedItem item is found within the itemStackList list
+    private boolean itemStackListContains(List<ItemStack> itemStackList, ItemStack containedItem) {
+        for (ItemStack itemStack : itemStackList) if (itemStack.isSimilar(containedItem)) return true;
+        return false;
+    }
+
+    // Item hand swap to catch item slot changes with menu buttons
+    @EventHandler 
+    public void onPlayerSwapHand(PlayerSwapHandItemsEvent event) {
+        List<ItemStack> forbiddenSwitchList = List.of(plugin.quickSelectionMenu, plugin.return2MainLobby, leave);
+        if (itemStackListContains(forbiddenSwitchList, event.getMainHandItem()) || itemStackListContains(forbiddenSwitchList, event.getOffHandItem())) event.setCancelled(true);
     }
 
     @EventHandler
     public void onPlayerTeleport(PlayerTeleportEvent event) {
-        Game game = getGame(event.getTo().getWorld());
-        if (game != null) game.onPlayerTeleport(event);
+        runIfNonNullGetGame(event.getTo().getWorld(), g -> g.onPlayerTeleport(event));
     }
 
     private void deleteFolder(File folder) {
         File[] fileList = folder.listFiles();
-        if (fileList != null) 
-            for (File file : fileList) 
+        if (fileList != null) {
+            for (File file : fileList) {
                 if (file.isDirectory()) deleteFolder(file);
                 else file.delete();
+            }
+        }
         folder.delete();
     }
 
