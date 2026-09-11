@@ -6,7 +6,6 @@ import java.nio.file.Files;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ThreadLocalRandom;
 import java.util.logging.Logger;
 
 import org.bukkit.Bukkit;
@@ -20,17 +19,23 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
+import org.bukkit.metadata.FixedMetadataValue;
 
 public abstract class Game {
     protected final Minigames plugin;
     protected final FileConfiguration config;
     protected final ConfigurationSection gameConfig;
     protected final Logger log;
-    protected final int teamSize, worldId;
+    protected final int worldId;
     protected final String gameName;
+    protected final byte[] metadata;
     protected Map<String, Integer> scores = new HashMap<>();
     protected Map<String, List<String>> teams = new HashMap<>();
     protected World world;
@@ -42,9 +47,9 @@ public abstract class Game {
         plugin = args.plugin();
         config = plugin.getConfig();
         log = plugin.getLogger();
-        teamSize = args.teamSize();
         worldId = args.worldId();
         gameName = args.gameName();
+        metadata = args.metadata();
         gameConfig = config.getConfigurationSection(gameName.toLowerCase());
 
         // Setup & start
@@ -81,10 +86,11 @@ public abstract class Game {
         if (existing != null) Bukkit.unloadWorld(existing, false);
         if (gameFolder.exists()) deleteFolder(gameFolder);
 
-        // Create new world with a random map
-        List<String> maps = gameConfig.getStringList("maps");
-        copyFolder(new File(plugin.worldContainer, maps.get(ThreadLocalRandom.current().nextInt(maps.size()))), gameFolder);
+        // Create new world
+        copyFolder(new File(plugin.worldContainer, getMap()), gameFolder);
         world = new WorldCreator(worldName).environment(World.Environment.NORMAL).createWorld();
+        world.setMetadata("game", new FixedMetadataValue(plugin, gameName));
+        world.setMetadata("id", new FixedMetadataValue(plugin, worldId));
 
         // Get spawn location
         spawnLoc = new Location(world, gameConfig.getDouble("spawn.x"), gameConfig.getDouble("spawn.y"), gameConfig.getDouble("spawn.z"), (float) gameConfig.getDouble("spawn.yaw"), (float) gameConfig.getDouble("spawn.pitch"));
@@ -95,9 +101,13 @@ public abstract class Game {
     public Location getSpawnLocation() {
         return spawnLoc;
     }
+    public byte[] getMetadata() {
+        return metadata;
+    }
 
     // Required functions
     protected abstract boolean hasSpace();
+    protected abstract String getMap();
     protected abstract void start();
     protected abstract void attemptLeave(Player player);
 
@@ -109,5 +119,9 @@ public abstract class Game {
     protected void onPlayerJoin(PlayerJoinEvent event) {}
     protected void onPlayerMove(PlayerMoveEvent event) {}
     protected void onPlayerQuit(PlayerQuitEvent event) {}
+    protected void onAsyncPlayerChat(AsyncPlayerChatEvent event) {}
+    protected void onInventoryClick(InventoryClickEvent event) {}
+    protected void onPlayerTeleport(PlayerTeleportEvent event) {}
+    protected void onPlayerRespawn(PlayerRespawnEvent event) {}
 }
 

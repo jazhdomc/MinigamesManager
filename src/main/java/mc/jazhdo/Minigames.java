@@ -2,6 +2,7 @@ package mc.jazhdo;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -11,19 +12,28 @@ import java.util.logging.Logger;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
+import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
+
+import com.google.common.io.ByteArrayDataOutput;
+import com.google.common.io.ByteStreams;
 
 import net.md_5.bungee.api.chat.TextComponent;
 
 public class Minigames extends JavaPlugin {
-    private final List<Integer> supportedTeamSizes = List.of(1, 2, 5, 10);
-    private final Map<String, Function<GameArgs, Game>> gameTypes = new HashMap<>();
-    private final Map<String, Map<Integer, Game>> games = new HashMap<>();
+    public final Map<String, Function<GameArgs, Game>> gameTypes = new HashMap<>();
+    public final Map<String, Map<Integer, Game>> games = new HashMap<>();
+    public final Map<String, Inventory> selectionMenus = new HashMap<>();
     private final List<String> worldDelete = new ArrayList<>();
+    public ItemStack quickSelectionMenu, return2MainLobby, exit;
     private GameListener listener;
     private Logger log;
     public File worldContainer;
@@ -42,67 +52,21 @@ public class Minigames extends JavaPlugin {
 
             // Make sure sender is a player
             if (sender instanceof Player player) {
-                switch (command.getName()) {
-                    case "join" -> {
-                        // Validate arguments
-                        if (args.length == 2) {
-                            // Get and validate game class
-                            Function<GameArgs, Game> gameClass = gameTypes.get(args[0]);
-                            if (gameClass == null) {
-                                sendError(player, "Game " + args[0] + " is not a type of game. Allowed types: " + String.join(", ", gameTypes.keySet()));
-                                return true;
-                            }
-
-                            // Get and validate team size
-                            int teamSize;
-                            try {
-                                teamSize = Integer.parseInt(args[1]);
-                            } catch (NumberFormatException e) {
-                                sendError(player, "The team size " + args[1] + " is not a valid number. Make sure it's a number.");
-                                return true;
-                            }
-                            if (!supportedTeamSizes.contains(teamSize)) {
-                                sendError(player, "The team size is not a valid size. Valid sizes: " + String.join(", ", supportedTeamSizes.stream().map(String::valueOf).toList()));
-                                return true;
-                            }
-
-                            // Get into an existing game if there is space in one
-                            Map<Integer, Game> gameList = games.get(args[0]);
-                            for (Game game : gameList.values())
-                                if (game.hasSpace()) {
-                                    player.teleport(game.getSpawnLocation());
-                                    return true;
-                                }
-
-                            // Make a new game in a existing spot if possible
-                            for (int index : gameList.keySet())
-                                if (gameList.get(index) == null) {
-                                    Game newGame = gameClass.apply(new GameArgs(plugin, teamSize, index, args[0]));
-                                    gameList.put(index, newGame);
-                                    player.teleport(newGame.getSpawnLocation());
-                                    return true;
-                                }
-
-                            // If there are no empty spots, create a new one
-                            int index = gameList.keySet().size();
-                            Game newGame = gameClass.apply(new GameArgs(plugin, teamSize, index, args[0]));
-                            gameList.put(index, newGame);
-                            player.teleport(newGame.getSpawnLocation());
-                        } else 
-                            switch (args.length) {
-                                case 0 -> sendError(player, "<game> argument required. (/join <game> <team_size>)");
-                                case 1 -> sendError(player, "<team_size> argument required. (/join " + args[0] + " <team_size>)");
-                                default -> sendError(player, "Too many arguments. Required amount: 2 (/join <game> <team_size>)");
-                            }
-                    }
-                    case "leave" -> {
-                        Game game = listener.getGame(player.getWorld());
-                        if (game == null) sendError(player, "You must be a game to leave it.");
-                        else {
-                            sendInfo(player, "Leaving the game...");
-                            game.attemptLeave(player);
+                // Validate arguments
+                switch (args.length) {
+                    case 1 -> {
+                        // Get and validate game class
+                        Inventory selectionMenu = selectionMenus.get(args[0]);
+                        if (selectionMenu == null) {
+                            sendError(player, "Game " + args[0] + " is not a type of game. Existing types: " + String.join(", ", gameTypes.keySet()));
+                            return true;
                         }
+                        
+                        // Show selection inventory interface
+                        player.openInventory(selectionMenu);
                     }
+                    case 0 -> sendError(player, "<game> argument required. (/join <game>)");
+                    default -> sendError(player, "Too many arguments. Required amount: 1 (/join <game>)");
                 }
             } else sendError(sender, "This command can only be used as a player.");
 
@@ -144,6 +108,13 @@ public class Minigames extends JavaPlugin {
         return false;
     }
 
+    public void setLobbyInventory(Player player) {
+        PlayerInventory inv = player.getInventory();
+        inv.clear();
+        inv.setItem(0, quickSelectionMenu);
+        inv.setItem(8, return2MainLobby);
+    }
+
     @Override
     public void onEnable() {
         log = getLogger();
@@ -161,9 +132,75 @@ public class Minigames extends JavaPlugin {
 
         // Setup games
         gameTypes.put("Bridge", BridgeGame::new);
+        gameTypes.put("PillarsOfFortune", PillarsOfFortune::new);
         for (String key : gameTypes.keySet()) games.put(key, new HashMap<>());
 
+        // Setup game selection inventories
+        Inventory bridgeGUI = Bukkit.createInventory(null, 27, "Bridge");
+        exit = new ItemStack(Material.BARRIER);
+        ItemMeta exitMeta = exit.getItemMeta();
+        exitMeta.setDisplayName(ChatColor.RESET + "" + ChatColor.RED + "Close Menu");
+        exitMeta.setLore(List.of(ChatColor.RESET + "This closes the game selection interface."));
+        exit.setItemMeta(exitMeta);
+        bridgeGUI.setItem(0, exit);
+        for (int i = 0; i < 4; i++) {
+            ItemStack gameType = new ItemStack(Material.SKULL_ITEM, i + 1, (short) 3);
+            ItemMeta gameTypeMeta = gameType.getItemMeta();
+            String playersInType = Integer.toString(i + 1);
+            gameTypeMeta.setDisplayName(ChatColor.RESET + "Play " + playersInType + "v" + playersInType);
+            gameTypeMeta.setLore(List.of(ChatColor.RESET + "Open Lobbies: 0/0"));
+            gameType.setItemMeta(gameTypeMeta);
+            bridgeGUI.setItem(10 + (2 * i), gameType);
+        }
+        selectionMenus.put("Bridge", bridgeGUI);
+        
+        Inventory POFGUI = Bukkit.createInventory(null, 27, "Pillars of Fortune");
+        POFGUI.setItem(0, exit);
+        ItemStack icon = new ItemStack(Material.IRON_FENCE);
+        ItemMeta iconMeta = icon.getItemMeta();
+        iconMeta.setDisplayName(ChatColor.RESET + "Play");
+        iconMeta.setLore(List.of(ChatColor.RESET + "Open Lobbies: 0/0"));
+        icon.setItemMeta(iconMeta);
+        POFGUI.setItem(13, icon);
+        selectionMenus.put("PillarsOfFortune", POFGUI);
+
         worldContainer = Bukkit.getWorldContainer();
+        quickSelectionMenu = new ItemStack(Material.EMPTY_MAP);
+        ItemMeta quickSelectionMenuMeta = quickSelectionMenu.getItemMeta();
+        quickSelectionMenuMeta.setDisplayName(ChatColor.RESET + "Quick Select");
+        quickSelectionMenuMeta.setLore(List.of(ChatColor.RESET + "Opens up the quick select game menu."));
+        quickSelectionMenu.setItemMeta(quickSelectionMenuMeta);
+        return2MainLobby = new ItemStack(Material.BARRIER);
+        ItemMeta return2MainLobbyMeta = return2MainLobby.getItemMeta();
+        return2MainLobbyMeta.setDisplayName(ChatColor.RESET + "Return to Main Lobby");
+        return2MainLobbyMeta.setLore(List.of(ChatColor.RESET + "Teleports you to the main lobby."));
+        return2MainLobby.setItemMeta(return2MainLobbyMeta);
+
+        Bukkit.getScheduler().runTaskTimer(this, () -> {
+            for (int i = 0; i < 4; i++) {
+                ItemStack item = bridgeGUI.getItem(10 + (2 * i));
+                ItemMeta meta = item.getItemMeta();
+                ByteArrayDataOutput metadata = ByteStreams.newDataOutput();
+                metadata.writeInt(i + 1);
+                byte[] bytes = metadata.toByteArray();
+                int open = 0, total = 0;
+                for (Game game : games.get("Bridge").values()) {
+                    if (Arrays.equals(bytes, game.getMetadata())) {
+                        if (game.hasSpace()) open++;
+                        total++;
+                    }
+                }
+                meta.setLore(List.of(ChatColor.RESET + "Open Lobbies: " + Integer.toString(open) + "/" + Integer.toString(total)));
+            }
+            ItemStack pof = POFGUI.getItem(13);
+            ItemMeta pofMeta = pof.getItemMeta();
+            int open = 0, total = 0;
+            for (Game game : games.get("PillarsOfFortune").values()) {
+                if (game.hasSpace()) open++;
+                total++; 
+            }
+            pofMeta.setLore(List.of(ChatColor.RESET + "Open Lobbies: " + Integer.toString(open) + "/" + Integer.toString(total)));
+        }, 0l, 1l);
     }
     
     @Override

@@ -3,6 +3,7 @@ package mc.jazhdo;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
@@ -34,20 +35,26 @@ import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
 import org.bukkit.scoreboard.Scoreboard;
 
+import com.google.common.io.ByteArrayDataInput;
+import com.google.common.io.ByteStreams;
+
 import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.BaseComponent;
 import net.md_5.bungee.api.chat.TextComponent;
 
 public class BridgeGame extends Game {
+    private final BossBar bossBar = Bukkit.createBossBar(ChatColor.GOLD + "Time Left: 00:00", BarColor.RED, BarStyle.SOLID);
     private enum State { WAITING, PLAYTIME, SCORES }
+    private final int teamSize;
     private State currentState = State.WAITING;
     private Scoreboard scoreboard;
     private Objective objective;
     private BukkitTask timer;
-    private final BossBar bossBar = Bukkit.createBossBar(ChatColor.GOLD + "Time Left: 00:00", BarColor.RED, BarStyle.SOLID);
 
     public BridgeGame(GameArgs args) {
         super(args);
+        ByteArrayDataInput input = ByteStreams.newDataInput(metadata);
+        teamSize = input.readInt();
     }
     
     @Override
@@ -152,6 +159,7 @@ public class BridgeGame extends Game {
             player.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText(ChatColor.valueOf(team.toUpperCase()) + "You are on Team " + team + "!"));
             (redTeam ? red : blue).add(player.getName());
             respawnPlayer(player, redTeam);
+            player.setGameMode(GameMode.SURVIVAL);
         }
         teams.put("Red", red);
         teams.put("Blue", blue);
@@ -194,9 +202,6 @@ public class BridgeGame extends Game {
                 count--;
             }
         }.runTaskTimer(plugin, 0L, 20L);
-
-        // Set gamemode
-        for (Player p : world.getPlayers()) p.setGameMode(GameMode.SURVIVAL);
     }
 
     private void removeCages(Location center) {
@@ -219,8 +224,20 @@ public class BridgeGame extends Game {
     }
 
     public String getTeam(String playerName) {
-        for (String player : teams.get("Red")) if (player.equals(playerName)) return "Red";
-        for (String player : teams.get("Blue")) if (player.equals(playerName)) return "Blue";
+        Boolean redTeam = getRedTeam(playerName);
+        if (redTeam == null) return null;
+        return redTeam ? "Red" : "Blue";
+    }
+
+    /**
+     * Returns true for red team, false for blue team, null for neither
+     * 
+     * @param playerName The name of the player to check for
+     * @return Whether or not they are on the red team (null for neither, false for blue)
+     */
+    public Boolean getRedTeam(String playerName) {
+        for (String player : teams.get("Red")) if (player.equalsIgnoreCase(playerName)) return true;
+        for (String player : teams.get("Blue")) if (player.equalsIgnoreCase(playerName)) return false;
         return null;
     }
 
@@ -267,15 +284,15 @@ public class BridgeGame extends Game {
         new Location(world, gameConfig.getDouble("blue.x"), gameConfig.getDouble("blue.y"), gameConfig.getDouble("blue.z"), (float) gameConfig.getDouble("blue.yaw"), (float) gameConfig.getDouble("blue.pitch"));
         player.teleport(spawn);
 
-        // Clear Inventory to prevent stacking items in inventory's back slots
+        // Clear inventory to prevent stacking items in inventory's back slots
         PlayerInventory playerInventory = player.getInventory();
         playerInventory.clear();
 
-        // Clear effets like gapple
+        // Clear effects like gapple
         player.removePotionEffect(PotionEffectType.ABSORPTION);
         player.removePotionEffect(PotionEffectType.REGENERATION);
 
-        // Give Starting Inventory
+        // Give starting inventory
         playerInventory.setItem(0, new ItemStack(Material.IRON_SWORD));
         ItemStack pickaxe = new ItemStack(Material.IRON_PICKAXE);
         ItemMeta pickaxeMeta = pickaxe.getItemMeta();
@@ -313,6 +330,12 @@ public class BridgeGame extends Game {
             if (!remaining.isEmpty()) endGame((getTeam(remaining.get(0).getName())));
             else endGame("Nobody");
         }
+    }
+
+    @Override
+    public String getMap() {
+        List<String> maps = gameConfig.getStringList("maps");
+        return maps.get(ThreadLocalRandom.current().nextInt(maps.size()));
     }
 
     @Override
@@ -379,13 +402,9 @@ public class BridgeGame extends Game {
 
         Player player = event.getEntity();
         Bukkit.getScheduler().runTaskLater(plugin, () -> {
-            if (currentState != State.WAITING) {
-                player.spigot().respawn();
-                respawnPlayer(player);
-            } else {
-                player.spigot().respawn();
-                player.teleport(spawnLoc);
-            }
+            player.spigot().respawn();
+            if (currentState == State.WAITING) player.teleport(spawnLoc);
+            else respawnPlayer(player);
         }, 1L);
     }
 

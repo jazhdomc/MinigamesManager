@@ -67,3 +67,28 @@ bridge:
   maps:
     - BridgeMap1
     - BridgeMap2
+
+# Config for the PillarsOfFortune minigame
+pillarsoffortune:
+  # The spawn
+  spawn:
+    x: 0.5
+    y: 67
+    z: 0.5
+    yaw:
+    pitch:
+
+  # Maps to select from
+  maps:
+    - LuckyTowerMap1
+
+  # Positions of the patterns of the tower ([-x, -z], [-x, z], [x, z], [x, -z], [z, x], [z, -x], [-z, x], [-z, -x])
+  position:
+    x: 6
+    z: 14
+  
+  # The y-level of the ground (Where players walk)
+  ground: 
+
+  # The y-level above the top of the towers where players spawn
+  player: 

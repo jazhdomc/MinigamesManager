@@ -1,22 +1,20 @@
 name: MinigamesManager
-version: 0.1.7
+version: 0.2.0
 main: mc.jazhdo.Minigames
 description: A plugin to manage minigames in JazhdoMC's minigames server
 author: Jazhdo
 website: https://github.com/jazhdomc/MinigamesManager
 
+depend: [ChatSystemBackend]
+
 permissions:
   minigames.join:
-    description: The ability to use the command /join and /leave
+    description: The ability to use the command /join
     default: true
 
 commands:
   join:
     description: Joins a minigame
-    usage: /join <game> <team_size>
+    usage: /join <game>
     aliases: [enter]
-    permission: minigames.join
-  leave:
-    description: Leaves a minigame
-    usage: /leave
     permission: minigames.join

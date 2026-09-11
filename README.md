@@ -1,3 +1,3 @@
 # MinigamesManager
 
-> A plugin to have many minigames
+> A plugin used in the minigames server of JazhdoMC for minigames
