@@ -110,6 +110,7 @@ public class GameListener implements Listener {
 
     @EventHandler
     public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
+        if (event.getEntity().getWorld() == Bukkit.getWorld("world")) event.setCancelled(true);
         runIfNonNullGetGame(event.getEntity().getWorld(), g -> g.onEntityDamageByEntity(event));
     }
 
@@ -120,14 +121,10 @@ public class GameListener implements Listener {
 
     @EventHandler
     public void onPlayerJoin(PlayerJoinEvent event) {
+        // Teleport player to the lobby no matter what world they join (game joining is done with teleportations)
+        event.setJoinMessage(null);
         Player player = event.getPlayer();
-        World world = player.getWorld();
-        if (world.getName().equals("world")) player.teleport(world.getSpawnLocation());
-        else {
-            Game game = getGame(world);
-            if (game != null) game.onPlayerJoin(event);
-            else player.teleport(Bukkit.getWorld("world").getSpawnLocation());
-        }
+        plugin.resetPlayer2Lobby(player);
     }
 
     @EventHandler
@@ -229,6 +226,13 @@ public class GameListener implements Listener {
             player.getInventory().setItem(8, leave);
         } else if (currentItem.isSimilar(plugin.quickSelectionMenu)) {
             if (event.getClick() != ClickType.NUMBER_KEY) player.openInventory(quickSelectInv);
+        } else if (inv.equals(quickSelectInv)) {
+            if (event.getClick() != ClickType.NUMBER_KEY) {
+                switch (event.getSlot()) {
+                    case 11 -> player.openInventory(plugin.selectionMenus.get("Bridge"));
+                    case 15 -> player.openInventory(plugin.selectionMenus.get("PillarsOfFortune"));
+                }
+            }
         } else if (currentItem.isSimilar(plugin.return2MainLobby)) {
             if (event.getClick() != ClickType.NUMBER_KEY) player.chat("/hub");
         } else if (currentItem.isSimilar(leave)) {
@@ -242,6 +246,7 @@ public class GameListener implements Listener {
     public void onPlayerInteractEvent(PlayerInteractEvent event) {
         if (event.getHand() != EquipmentSlot.HAND) return;
         ItemStack itemStack = event.getItem();
+        if (itemStack == null) return;
         Player player = event.getPlayer();
         if (itemStack.isSimilar(plugin.quickSelectionMenu)) player.openInventory(quickSelectInv);
         else if (itemStack.isSimilar(plugin.return2MainLobby)) player.chat("/hub");
@@ -289,6 +294,12 @@ public class GameListener implements Listener {
     @EventHandler
     public void onWorldUnload(WorldUnloadEvent event) {
         String worldName = event.getWorld().getName();
-        if (plugin.isWorld2Delete(worldName)) Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> deleteFolder(new File(plugin.worldContainer, worldName)));
+        if (plugin.isWorld2Delete(worldName)) {
+            plugin.scheduler.runTaskAsynchronously(plugin, () -> {
+                deleteFolder(new File(plugin.worldContainer, worldName));
+                String[] parts = worldName.split("Game");
+                plugin.scheduler.runTask(plugin, () -> plugin.games.get(parts[0]).put(Integer.parseInt(parts[1]), null));
+            });
+        }
     }
 }

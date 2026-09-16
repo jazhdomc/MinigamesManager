@@ -15,9 +15,9 @@ import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
 import org.bukkit.entity.Player;
 import org.bukkit.event.block.BlockBreakEvent;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
-import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.event.player.PlayerTeleportEvent;
@@ -30,8 +30,10 @@ import org.bukkit.scheduler.BukkitTask;
 import org.bukkit.scoreboard.DisplaySlot;
 import org.bukkit.scoreboard.Objective;
 import org.bukkit.scoreboard.Scoreboard;
+import org.bukkit.util.Vector;
 
 import net.md_5.bungee.api.ChatColor;
+import net.md_5.bungee.api.ChatMessageType;
 import net.md_5.bungee.api.chat.BaseComponent;
 import net.md_5.bungee.api.chat.TextComponent;
 
@@ -482,7 +484,7 @@ public class PillarsOfFortune extends Game {
         new ItemStack(Material.MILK_BUCKET),
         new ItemStack(Material.STORAGE_MINECART),
         new ItemStack(Material.POWERED_MINECART),
-        new ItemStack(Material.FISHING_ROD, 1, (short) 1),
+        new ItemStack(Material.FISHING_ROD),
         new ItemStack(Material.CAKE),
         new ItemStack(Material.BED),
         new ItemStack(Material.SHEARS),
@@ -601,12 +603,14 @@ public class PillarsOfFortune extends Game {
                             List<Location> tempSpawns = new ArrayList<>(spawns);
                             for (Player p : world.getPlayers()) {
                                 // Setup player stuff
-                                p.getInventory().clear();
-                                p.setGameMode(GameMode.SURVIVAL);
+                                plugin.resetPlayer(p);
 
                                 // Teleport player to their pillar
                                 Location randomLoc = tempSpawns.get(random.nextInt(0, tempSpawns.size()));
+                                p.setFallDistance(0f);
+                                p.setVelocity(new Vector(0, 0, 0));
                                 p.teleport(randomLoc);
+                                p.setFallDistance(0f);
                                 tempSpawns.remove(randomLoc);
 
                                 // Set scoreboard
@@ -628,29 +632,40 @@ public class PillarsOfFortune extends Game {
                                     else {
                                         this.cancel();
                                         for (Location loc : spawns) removeBox(loc);
+                                        for (Player p : world.getPlayers()) p.setGameMode(GameMode.SURVIVAL);
 
                                         // Start random item generation loop
                                         generationLoop = scheduler.runTaskTimer(plugin, () -> {
                                             for (Player player : world.getPlayers()) {
-                                                boolean single = random.nextBoolean();
-                                                List<ItemStack> itemList = single ? singleLoot : multiLoot;
-                                                List<ItemStack> item = new ArrayList<>();
-                                                item.add(itemList.get(random.nextInt(0, itemList.size())).clone());
-                                                if (!single) {
-                                                    ItemStack newItem = item.get(0);
-                                                    newItem.setAmount(List.of(4, 8, 8, 16).get(random.nextInt(0, 4)));
-                                                    item.set(0, newItem);
-                                                    if (random.nextInt(0, 3) == 0) item.add(multiLoot.get(random.nextInt(0, multiLoot.size())));
+                                                if (alive.contains(player)) { 
+                                                    boolean single = random.nextBoolean();
+                                                    List<ItemStack> itemList = single ? singleLoot : multiLoot;
+                                                    List<ItemStack> item = new ArrayList<>();
+                                                    item.add(itemList.get(random.nextInt(0, itemList.size())).clone());
+                                                    if (!single) {
+                                                        ItemStack newItem = item.get(0);
+                                                        newItem.setAmount(List.of(4, 8, 8, 16).get(random.nextInt(0, 4)));
+                                                        item.set(0, newItem);
+                                                        if (random.nextInt(0, 3) == 0) item.add(multiLoot.get(random.nextInt(0, multiLoot.size())));
+                                                    }
+                                                    for (ItemStack itemI : item) player.getInventory().addItem(itemI);
                                                 }
-                                                for (ItemStack itemI : item) player.getInventory().addItem(itemI);
                                             }
                                         }, 0l, 100l);
+
+                                        // Add slime in the center
+                                        scheduler.runTaskLater(plugin, () -> {
+                                            for (Player p : world.getPlayers()) p.spigot().sendMessage(ChatMessageType.ACTION_BAR, TextComponent.fromLegacyText("The center is slime!"));
+                                            for (int x = -1; x < 2; x++) {
+                                                for (int z = -1; z < 2; z++) world.getBlockAt(x, 66, z).setType(Material.SLIME_BLOCK);
+                                            }
+                                        }, 200l);
                                     }
                                 }
                             }.runTaskTimer(plugin, 0l, 20l);
                             this.cancel();
-                        } else if (countdown == 1) sendInfo("Game starting in 1 second");
-                        else if (countdown % 10 == 0 || countdown < 10) sendInfo("Game starting in " + Integer.toString(countdown) + " seconds");
+                        } else if (countdown == 1) broadcastActionBar("Game starting in 1 second");
+                        else if (countdown % 10 == 0 || countdown < 10) broadcastActionBar("Game starting in " + Integer.toString(countdown) + " seconds");
                     }
                 } else {
                     if (countingDown == true) {
@@ -696,7 +711,8 @@ public class PillarsOfFortune extends Game {
 
             // Death message
             event.setDeathMessage(null);
-            sendInfo(ChatColor.RED + "Player " + player.getName() + " died.");
+            Player killer = player.getKiller();
+            sendInfo(ChatColor.DARK_RED + "Player " + ChatColor.RED + player.getName() + ChatColor.DARK_RED + (killer != null ? (" died to " + ChatColor.GREEN + killer.getName()) : " died."));
 
             // Respawn
             scheduler.runTaskLater(plugin, () -> {
@@ -705,8 +721,9 @@ public class PillarsOfFortune extends Game {
                 PlayerInventory inv = player.getInventory();
                 inv.setHeldItemSlot(4);
                 inv.clear();
-                inv.setItem(2, newGame);
-                inv.setItem(6, lobby);
+                // TODO: These are problematic because they require custom inventory handling (Next steps would be to generalize this)
+                // inv.setItem(2, newGame);
+                // inv.setItem(6, lobby);
             }, 1l);
 
             // Check if theres a winner
@@ -744,32 +761,27 @@ public class PillarsOfFortune extends Game {
     }
 
     @Override
-    public void onPlayerJoin(PlayerJoinEvent event) {
-        // Send them straight to the lobby because they're left over from a previous game
-        event.setJoinMessage(null);
-        Player player = event.getPlayer();
-        player.teleport(lobbySpawn);
-        player.getInventory().clear();
-        player.setGameMode(GameMode.ADVENTURE);
-    }
-
-    @Override
     public void onPlayerTeleport(PlayerTeleportEvent event) {
         if (currentState == STATE.WAITING) {
+            // Send alert
+            Player player = event.getPlayer();
+            sendInfo(ChatColor.YELLOW + "Player " + player.getName() + " has joined. " + ChatColor.AQUA + "(" + ChatColor.GOLD + Integer.toString(alive.size()) + "/8" + ChatColor.AQUA + ")");
+
             // Decrease countdown for less waiting
             if (countingDown == true && countdown > 20) {
                 countdown -= 10;
-                if (countdown % 10 == 0) sendInfo("Game starting in " + Integer.toString(countdown) + " seconds");
+                if (countdown % 10 == 0) broadcastActionBar("Game starting in " + Integer.toString(countdown) + " seconds");
             }
 
             // Change playercount
-            Player player = event.getPlayer();
             alive.add(player);
 
+            // Update views
             refreshScoreboard();
+            bossBar.addPlayer(player);
 
-            // Send alert
-            sendInfo(ChatColor.YELLOW + "Player " + player.getName() + " has joined. " + ChatColor.AQUA + "(" + ChatColor.GOLD + Integer.toString(alive.size()) + "/8" + ChatColor.AQUA + ")");
+            // Reset player
+            plugin.resetPlayer(player);
         }
     }
 
@@ -785,13 +797,11 @@ public class PillarsOfFortune extends Game {
         refreshScoreboard();
         
         // Reset player
-        player.getInventory().clear();
-        player.teleport(lobbySpawn);
-        player.setGameMode(GameMode.ADVENTURE);
+        plugin.resetPlayer2Lobby(player);
         bossBar.removePlayer(player);
 
         // Send alert
-        sendInfo(ChatColor.YELLOW + "Player " + player.getName() + "has left.");
+        sendInfo(ChatColor.YELLOW + "Player " + player.getName() + " has left.");
 
         // End game if needed
         if (currentState == STATE.PLAYTIME) checkEndGame();
@@ -819,13 +829,9 @@ public class PillarsOfFortune extends Game {
 
                 if (count == 11) {
                     this.cancel();
-                    for (Player p : world.getPlayers()) {
-                        p.getInventory().clear();
-                        p.teleport(lobbySpawn);
-                        p.setGameMode(GameMode.ADVENTURE);
-                    }
+                    for (Player p : world.getPlayers()) plugin.resetPlayer2Lobby(p);
                     resetWorld();
-                } else broadcast(prefix + ChatColor.WHITE + "Teleporting you to the lobby in " + Integer.toString(11 - count) + "...");
+                } else broadcastActionBar("Teleporting you to the lobby in " + Integer.toString(11 - count) + "...");
             }
         }.runTaskTimer(plugin, 0l, 20l);
     }
@@ -854,6 +860,16 @@ public class PillarsOfFortune extends Game {
     private void broadcast(String msg) {
         BaseComponent[] bc = TextComponent.fromLegacyText(msg);
         for (Player player : world.getPlayers()) player.spigot().sendMessage(bc);
+    }
+
+    private void broadcastActionBar(String msg) {
+        BaseComponent[] bc = TextComponent.fromLegacyText(msg);
+        for (Player player : world.getPlayers()) player.spigot().sendMessage(ChatMessageType.ACTION_BAR, bc);
+    }
+
+    @Override 
+    public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
+        if (currentState != STATE.PLAYTIME && event.getEntity() instanceof Player && event.getDamager() instanceof Player) event.setCancelled(true);
     }
 
     @Override

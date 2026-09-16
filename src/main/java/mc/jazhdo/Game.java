@@ -9,7 +9,6 @@ import java.util.Map;
 import java.util.logging.Logger;
 
 import org.bukkit.Bukkit;
-import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.WorldCreator;
@@ -21,7 +20,6 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
-import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.player.PlayerRespawnEvent;
@@ -109,9 +107,7 @@ public abstract class Game {
         plugin.deleteOnUnload(worldName);
     }
     public void leaveGame(Player player) {
-        player.teleport(Bukkit.getWorld("world").getSpawnLocation());
-        player.setGameMode(GameMode.ADVENTURE);
-        player.getInventory().clear();
+        plugin.resetPlayer2Lobby(player);
         attemptLeave(player);
     }
 
@@ -126,7 +122,6 @@ public abstract class Game {
     protected void onBlockPlace(BlockPlaceEvent event) {}
     protected void onEntityDamageByEntity(EntityDamageByEntityEvent event) {}
     protected void onPlayerDeath(PlayerDeathEvent event) {}
-    protected void onPlayerJoin(PlayerJoinEvent event) {}
     protected void onPlayerMove(PlayerMoveEvent event) {}
     protected void onPlayerQuit(PlayerQuitEvent event) {}
     protected void onAsyncPlayerChat(AsyncPlayerChatEvent event) {}

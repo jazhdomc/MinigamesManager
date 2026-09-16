@@ -22,7 +22,6 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
-import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.ItemStack;
@@ -372,15 +371,14 @@ public class BridgeGame extends Game {
                             broadcast(ChatColor.BLUE + playerName + " scored for Team Blue! " + ChatColor.RED + scores.get("Red") + ChatColor.WHITE + " - " + ChatColor.BLUE + scores.get("Blue"));
                             for (Player p : world.getPlayers()) respawnPlayer(p);
                         }
+                        // Display score when someone scores
+                        String title = ChatColor.RED + Integer.toString(scores.get("Red")) + ChatColor.WHITE + " - " + ChatColor.BLUE + Integer.toString(scores.get("Blue")), subtitle = ChatColor.valueOf(team.toUpperCase()) + player.getName() + " scored!";
+                        for (Player p : world.getPlayers()) p.sendTitle(title, subtitle, 5, 30, 10);
+                        updateScoreboard();
                     } else {
-                        broadcast(playerName + " has tried to scored in their own portal! Shame on them!");
+                        broadcast(ChatColor.GOLD + playerName + " has tried to score in their own portal! Shame on them!");
                         respawnPlayer(player);
                     }
-
-                    // Display score when someone scores
-                    String title = ChatColor.RED + Integer.toString(scores.get("Red")) + ChatColor.WHITE + " - " + ChatColor.BLUE + Integer.toString(scores.get("Blue")), subtitle = ChatColor.valueOf(team.toUpperCase()) + player.getName() + " scored!";
-                    for (Player p : world.getPlayers()) p.sendTitle(title, subtitle, 5, 30, 10);
-                    updateScoreboard();
                 }
             }
         }
@@ -396,20 +394,7 @@ public class BridgeGame extends Game {
             player.spigot().respawn();
             if (currentState == State.WAITING) player.teleport(spawnLoc);
             else respawnPlayer(player);
-        }, 1L);
-    }
-
-    @Override
-    public void onPlayerJoin(PlayerJoinEvent event) {
-        // Check if a game is currently in progress
-        Player player = event.getPlayer();
-        if (currentState != State.WAITING) plugin.sendError(player, "A game is already in progress!");
-        else {
-            if (world.getPlayers().size() > teamSize * 2) {
-                plugin.sendError(player, "This game already has enough players.");
-                player.teleport(Bukkit.getWorld("world").getSpawnLocation());
-            }
-        }
+        }, 1l);
     }
 
     @Override

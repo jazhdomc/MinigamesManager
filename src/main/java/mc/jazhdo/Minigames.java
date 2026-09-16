@@ -12,6 +12,7 @@ import java.util.logging.Logger;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.GameMode;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -22,6 +23,8 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.potion.PotionEffect;
+import org.bukkit.scheduler.BukkitScheduler;
 
 import com.google.common.io.ByteArrayDataOutput;
 import com.google.common.io.ByteStreams;
@@ -37,6 +40,7 @@ public class Minigames extends JavaPlugin {
     private GameListener listener;
     private Logger log;
     public File worldContainer;
+    public BukkitScheduler scheduler;
 
     private class Commands implements CommandExecutor {
         private final Minigames plugin;
@@ -113,11 +117,25 @@ public class Minigames extends JavaPlugin {
         return false;
     }
 
-    public void setLobbyInventory(Player player) {
+    public void resetPlayer2Lobby(Player player) {
+        player.teleport(Bukkit.getWorld("world").getSpawnLocation());
+        player.setGameMode(GameMode.ADVENTURE);
+        player.setScoreboard(Bukkit.getScoreboardManager().getNewScoreboard());
+        resetPlayer(player);
         PlayerInventory inv = player.getInventory();
-        inv.clear();
+        inv.setHeldItemSlot(4);
         inv.setItem(0, quickSelectionMenu);
         inv.setItem(8, return2MainLobby);
+    }
+
+    public void resetPlayer(Player player) {
+        player.getInventory().clear();
+        player.setFoodLevel(20);
+        player.setSaturation(20f);
+        player.setExhaustion(0.0f);
+        player.setHealth(20);
+        for (PotionEffect effect : player.getActivePotionEffects()) player.removePotionEffect(effect.getType());
+        player.setFireTicks(0);
     }
 
     @Override
@@ -170,6 +188,9 @@ public class Minigames extends JavaPlugin {
         // World container
         worldContainer = Bukkit.getWorldContainer();
 
+        // Scheduler
+        scheduler = Bukkit.getScheduler();
+
         // Quick select & main lobby hotbar interface items
         quickSelectionMenu = new ItemStack(Material.EMPTY_MAP);
         ItemMeta quickSelectionMenuMeta = quickSelectionMenu.getItemMeta();
@@ -183,7 +204,7 @@ public class Minigames extends JavaPlugin {
         return2MainLobby.setItemMeta(return2MainLobbyMeta);
 
         // Open lobby count update loop
-        Bukkit.getScheduler().runTaskTimer(this, () -> {
+        scheduler.runTaskTimer(this, () -> {
             for (int i = 0; i < 4; i++) {
                 ItemStack item = bridgeGUI.getItem(10 + (2 * i));
                 ItemMeta meta = item.getItemMeta();
@@ -192,6 +213,7 @@ public class Minigames extends JavaPlugin {
                 byte[] bytes = metadata.toByteArray();
                 int open = 0, total = 0;
                 for (Game game : games.get("Bridge").values()) {
+                    if (game == null) continue;
                     if (Arrays.equals(bytes, game.getMetadata())) {
                         if (game.hasSpace()) open++;
                         total++;
@@ -199,19 +221,20 @@ public class Minigames extends JavaPlugin {
                 }
                 meta.setLore(List.of(ChatColor.RESET + "Open Lobbies: " + Integer.toString(open) + "/" + Integer.toString(total)));
                 item.setItemMeta(meta);
-                item.setAmount(total);
+                item.setAmount(Math.max(1, total));
                 bridgeGUI.setItem(10 + (2 * i), item);
             }
             ItemStack pof = POFGUI.getItem(13);
             ItemMeta pofMeta = pof.getItemMeta();
             int open = 0, total = 0;
             for (Game game : games.get("PillarsOfFortune").values()) {
+                if (game == null) continue;
                 if (game.hasSpace()) open++;
                 total++; 
             }
             pofMeta.setLore(List.of(ChatColor.RESET + "Open Lobbies: " + Integer.toString(open) + "/" + Integer.toString(total)));
             pof.setItemMeta(pofMeta);
-            pof.setAmount(total);
+            pof.setAmount(Math.max(1, total));
             POFGUI.setItem(13, pof);
         }, 0l, 20l);
     }
