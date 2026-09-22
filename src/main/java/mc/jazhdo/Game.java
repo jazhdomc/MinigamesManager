@@ -86,7 +86,7 @@ public abstract class Game {
 
         // Create new world
         copyFolder(new File(plugin.worldContainer, getMap()), gameFolder);
-        world = new WorldCreator(worldName).environment(World.Environment.NORMAL).createWorld();
+        world = new WorldCreator(worldName).environment(World.Environment.NORMAL).generator("VoidGen").createWorld();
         world.setMetadata("game", new FixedMetadataValue(plugin, gameName));
         world.setMetadata("id", new FixedMetadataValue(plugin, worldId));
 
@@ -103,8 +103,8 @@ public abstract class Game {
         return metadata;
     }
     protected void resetWorld() {
-        Bukkit.unloadWorld(world, false);
         plugin.deleteOnUnload(worldName);
+        Bukkit.unloadWorld(world, false);
     }
     public void leaveGame(Player player) {
         plugin.resetPlayer2Lobby(player);

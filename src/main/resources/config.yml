@@ -1,5 +1,14 @@
 # The configuration file for the MinigamesManager plugin developed by JazhdoMC
 
+# Spawn location in the lobby world
+lobby:
+  world: world
+  x: 0
+  y: 64
+  z: 0
+  yaw: 90 
+  pitch: -5
+
 # BridgeGame configuration
 bridge:
   # Spawn location for each world
@@ -90,3 +99,28 @@ pillarsoffortune:
   
   # The y-level above the top of the towers where players spawn
   player: 100
+
+# Config for the TntRun minigame
+tntrun:
+  # The spawn
+  spawn:
+    x: 0.5
+    y: 91
+    z: 0.5
+    yaw: 0
+    pitch: -90
+
+  # Maps
+  maps: 
+    - TntRunMap1
+
+  # Floor coords to remove to start the game
+  floor-remove:
+    corner1:
+      x: 2
+      y: 90
+      z: 2
+    corner2:
+      x: -2
+      y: 90
+      z: -2

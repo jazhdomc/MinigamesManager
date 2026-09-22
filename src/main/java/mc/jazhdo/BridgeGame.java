@@ -24,6 +24,7 @@ import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
+import org.bukkit.event.player.PlayerRespawnEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
@@ -264,15 +265,10 @@ public class BridgeGame extends Game {
             p.sendTitle((winner.equals("Red") ? ChatColor.RED : (winner.equals("Blue") ? ChatColor.BLUE : ChatColor.GRAY)) + winner + " Wins!", ChatColor.GOLD + "Good Game!", 10, 60, 20);
             p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1f, 1f);
         }
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        plugin.scheduler.runTaskLater(plugin, () -> {
             // Reset game for all players
             bossBar.removeAll();
-            for (Player p : world.getPlayers()) {
-                p.setGameMode(GameMode.ADVENTURE);
-                p.getInventory().clear();
-                p.setScoreboard(Bukkit.getScoreboardManager().getNewScoreboard());
-                p.teleport(Bukkit.getWorld("world").getSpawnLocation());
-            }
+            for (Player p : world.getPlayers()) plugin.resetPlayer2Lobby(p);
             resetWorld();
         }, 100L);
     }
@@ -390,11 +386,16 @@ public class BridgeGame extends Game {
         event.getDrops().clear();
 
         Player player = event.getEntity();
-        Bukkit.getScheduler().runTaskLater(plugin, () -> {
+        plugin.scheduler.runTaskLater(plugin, () -> {
             player.spigot().respawn();
             if (currentState == State.WAITING) player.teleport(spawnLoc);
             else respawnPlayer(player);
         }, 1l);
+    }
+
+    @Override 
+    public void onPlayerRespawn(PlayerRespawnEvent event) {
+
     }
 
     @Override

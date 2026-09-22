@@ -13,10 +13,12 @@ import java.util.logging.Logger;
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.GameMode;
+import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
@@ -37,6 +39,8 @@ public class Minigames extends JavaPlugin {
     public final Map<String, Inventory> selectionMenus = new HashMap<>();
     private final List<String> worldDelete = new ArrayList<>();
     public ItemStack quickSelectionMenu, return2MainLobby, exit;
+    public Location lobbySpawn;
+    private FileConfiguration config;
     private GameListener listener;
     private Logger log;
     public File worldContainer;
@@ -118,7 +122,7 @@ public class Minigames extends JavaPlugin {
     }
 
     public void resetPlayer2Lobby(Player player) {
-        player.teleport(Bukkit.getWorld("world").getSpawnLocation());
+        player.teleport(lobbySpawn);
         player.setGameMode(GameMode.ADVENTURE);
         player.setScoreboard(Bukkit.getScoreboardManager().getNewScoreboard());
         resetPlayer(player);
@@ -136,6 +140,8 @@ public class Minigames extends JavaPlugin {
         player.setHealth(20);
         for (PotionEffect effect : player.getActivePotionEffects()) player.removePotionEffect(effect.getType());
         player.setFireTicks(0);
+        player.setExp(0f);
+        player.setTotalExperience(0);
     }
 
     @Override
@@ -145,6 +151,7 @@ public class Minigames extends JavaPlugin {
 
         // Setup config
         saveDefaultConfig();
+        config = getConfig();
 
         // Setup listeners
         Commands commands = new Commands(this);
@@ -190,6 +197,9 @@ public class Minigames extends JavaPlugin {
 
         // Scheduler
         scheduler = Bukkit.getScheduler();
+
+        // Lobby spawn
+        lobbySpawn = new Location(Bukkit.getWorld(config.getString("lobby.world")), config.getDouble("lobby.x"), config.getDouble("lobby.y"), config.getDouble("lobby.z"), (float) config.getDouble("lobby.yaw"), (float) config.getDouble("lobby.pitch"));
 
         // Quick select & main lobby hotbar interface items
         quickSelectionMenu = new ItemStack(Material.EMPTY_MAP);

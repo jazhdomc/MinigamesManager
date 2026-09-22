@@ -123,8 +123,7 @@ public class GameListener implements Listener {
     public void onPlayerJoin(PlayerJoinEvent event) {
         // Teleport player to the lobby no matter what world they join (game joining is done with teleportations)
         event.setJoinMessage(null);
-        Player player = event.getPlayer();
-        plugin.resetPlayer2Lobby(player);
+        plugin.resetPlayer2Lobby(event.getPlayer());
     }
 
     @EventHandler
@@ -234,7 +233,7 @@ public class GameListener implements Listener {
                 }
             }
         } else if (currentItem.isSimilar(plugin.return2MainLobby)) {
-            if (event.getClick() != ClickType.NUMBER_KEY) player.chat("/hub");
+            if (event.getClick() != ClickType.NUMBER_KEY) player.chat("/server lobby");
         } else if (currentItem.isSimilar(leave)) {
             if (event.getClick() != ClickType.NUMBER_KEY) runIfNonNullGetGame(player.getWorld(), g -> g.leaveGame(player));
         } else return;
@@ -249,7 +248,7 @@ public class GameListener implements Listener {
         if (itemStack == null) return;
         Player player = event.getPlayer();
         if (itemStack.isSimilar(plugin.quickSelectionMenu)) player.openInventory(quickSelectInv);
-        else if (itemStack.isSimilar(plugin.return2MainLobby)) player.chat("/hub");
+        else if (itemStack.isSimilar(plugin.return2MainLobby)) player.chat("/server lobby");
         else if (itemStack.isSimilar(leave)) runIfNonNullGetGame(player.getWorld(), g -> g.leaveGame(player));
         else return;
         event.setCancelled(true);

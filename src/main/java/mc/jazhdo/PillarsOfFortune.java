@@ -46,7 +46,6 @@ public class PillarsOfFortune extends Game {
     private final Set<Player> alive = new LinkedHashSet<>(), dead = new LinkedHashSet<>();
     private final List<Location> spawns = new ArrayList<>();
     private boolean countingDown = false;
-    private final Location lobbySpawn;
     private final Scoreboard scoreboard;
     private final Objective objective;
     private final BossBar bossBar;
@@ -552,11 +551,8 @@ public class PillarsOfFortune extends Game {
         lobbyMeta.setLore(List.of(ChatColor.RESET + "Teleports you to the Minigames lobby."));
         lobby.setItemMeta(lobbyMeta);
 
-        // Lobby spawn for quick using
-        lobbySpawn = Bukkit.getWorld("world").getSpawnLocation();
-
         // Scheduler var for quick using
-        scheduler = Bukkit.getScheduler();
+        scheduler = plugin.scheduler;
 
         // Scoreboard sidebar
         scoreboard = Bukkit.getScoreboardManager().getNewScoreboard();
@@ -728,8 +724,15 @@ public class PillarsOfFortune extends Game {
 
             // Check if theres a winner
             checkEndGame();
-        } else {
-            // It has to STATE.WAITING here (You can't get out during STATE.COUNTDOWN)
+        } else if (currentState == STATE.WAITING) {
+            // Make sure they keep their minigames lobby teleportation button
+            event.setKeepInventory(true);
+
+            // Customize death message
+            event.setDeathMessage(null);
+            sendInfo(ChatColor.DARK_RED + "Player " + ChatColor.RED + event.getEntity().getName() + ChatColor.DARK_RED + " died.");
+
+            // Respawn
             scheduler.runTaskLater(plugin, () -> event.getEntity().spigot().respawn(), 1l);
         }
     }
@@ -749,7 +752,7 @@ public class PillarsOfFortune extends Game {
             // Send alert & reset boss bar for player
             sendDM(player, prefix + ChatColor.YELLOW + "Leaving the Pillars of Fortune game...");
             bossBar.removePlayer(player);
-            sendInfo(ChatColor.YELLOW + "Player " + player.getName() + "has left.");
+            sendInfo(ChatColor.YELLOW + "Player " + player.getName() + " has left.");
         }
     }
 
@@ -763,8 +766,11 @@ public class PillarsOfFortune extends Game {
     @Override
     public void onPlayerTeleport(PlayerTeleportEvent event) {
         if (currentState == STATE.WAITING) {
-            // Send alert
+            // Change playercount
             Player player = event.getPlayer();
+            alive.add(player);
+            
+            // Send alert
             sendInfo(ChatColor.YELLOW + "Player " + player.getName() + " has joined. " + ChatColor.AQUA + "(" + ChatColor.GOLD + Integer.toString(alive.size()) + "/8" + ChatColor.AQUA + ")");
 
             // Decrease countdown for less waiting
@@ -773,15 +779,13 @@ public class PillarsOfFortune extends Game {
                 if (countdown % 10 == 0) broadcastActionBar("Game starting in " + Integer.toString(countdown) + " seconds");
             }
 
-            // Change playercount
-            alive.add(player);
-
             // Update views
             refreshScoreboard();
             bossBar.addPlayer(player);
 
             // Reset player
             plugin.resetPlayer(player);
+            player.setGameMode(GameMode.ADVENTURE);
         }
     }
 
