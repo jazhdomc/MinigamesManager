@@ -73,7 +73,13 @@ public class GameListener implements Listener {
         pillarsOfFortuneMeta.setDisplayName("Pillars of Fortune");
         pillarsOfFortuneMeta.setLore(List.of(ChatColor.RESET + "The popular POF game."));
         pillarsOfFortune.setItemMeta(pillarsOfFortuneMeta);
-        quickSelectInv.setItem(15, pillarsOfFortune);
+        quickSelectInv.setItem(13, pillarsOfFortune);
+        ItemStack tntRun = new ItemStack(Material.TNT);
+        ItemMeta tntRunMeta = tntRun.getItemMeta();
+        tntRunMeta.setDisplayName("Tnt Run");
+        tntRunMeta.setLore(List.of(ChatColor.RESET + "The common tnt run game."));
+        tntRun.setItemMeta(tntRunMeta);
+        quickSelectInv.setItem(15, tntRun);
     }
     
     /**
@@ -187,6 +193,10 @@ public class GameListener implements Listener {
                     gameName = "PillarsOfFortune";
                     metadata = new byte[0];
                 }
+                case "Tnt Run" -> {
+                    gameName = "TntRun";
+                    metadata = new byte[0];
+                }
                 default -> {
                     return;
                 }
@@ -229,7 +239,8 @@ public class GameListener implements Listener {
             if (event.getClick() != ClickType.NUMBER_KEY) {
                 switch (event.getSlot()) {
                     case 11 -> player.openInventory(plugin.selectionMenus.get("Bridge"));
-                    case 15 -> player.openInventory(plugin.selectionMenus.get("PillarsOfFortune"));
+                    case 13 -> player.openInventory(plugin.selectionMenus.get("PillarsOfFortune"));
+                    case 15 -> player.openInventory(plugin.selectionMenus.get("TntRun"));
                 }
             }
         } else if (currentItem.isSimilar(plugin.return2MainLobby)) {

@@ -162,35 +162,51 @@ public class Minigames extends JavaPlugin {
         // Setup games
         gameTypes.put("Bridge", BridgeGame::new);
         gameTypes.put("PillarsOfFortune", PillarsOfFortune::new);
+        gameTypes.put("TntRun", TntRun::new);
         for (String key : gameTypes.keySet()) games.put(key, new HashMap<>());
 
         // Setup game selection inventories
-        Inventory bridgeGUI = Bukkit.createInventory(null, 27, "Bridge");
         exit = new ItemStack(Material.BARRIER);
         ItemMeta exitMeta = exit.getItemMeta();
         exitMeta.setDisplayName(ChatColor.RESET + "" + ChatColor.RED + "Close Menu");
         exitMeta.setLore(List.of(ChatColor.RESET + "This closes the game selection interface."));
         exit.setItemMeta(exitMeta);
-        bridgeGUI.setItem(0, exit);
-        for (int i = 0; i < 4; i++) {
-            ItemStack gameType = new ItemStack(Material.SKULL_ITEM, 1, (short) 3);
-            ItemMeta gameTypeMeta = gameType.getItemMeta();
-            String playersInType = Integer.toString(i + 1);
-            gameTypeMeta.setDisplayName(ChatColor.RESET + "Play " + playersInType + "v" + playersInType);
-            gameTypeMeta.setLore(List.of(ChatColor.RESET + "Open Lobbies: 0/0"));
-            gameType.setItemMeta(gameTypeMeta);
-            bridgeGUI.setItem(10 + (2 * i), gameType);
+        Inventory bridgeGUI = Bukkit.createInventory(null, 27, "Bridge");
+        {
+            bridgeGUI.setItem(0, exit);
+            for (int i = 0; i < 4; i++) {
+                ItemStack gameType = new ItemStack(Material.SKULL_ITEM, 1, (short) 3);
+                ItemMeta gameTypeMeta = gameType.getItemMeta();
+                String playersInType = Integer.toString(i + 1);
+                gameTypeMeta.setDisplayName(ChatColor.RESET + "Play " + playersInType + "v" + playersInType);
+                gameTypeMeta.setLore(List.of(ChatColor.RESET + "Open Lobbies: 0/0"));
+                gameType.setItemMeta(gameTypeMeta);
+                bridgeGUI.setItem(10 + (2 * i), gameType);
+            }
+            selectionMenus.put("Bridge", bridgeGUI);
         }
-        selectionMenus.put("Bridge", bridgeGUI);
         Inventory POFGUI = Bukkit.createInventory(null, 27, "Pillars of Fortune");
-        POFGUI.setItem(0, exit);
-        ItemStack icon = new ItemStack(Material.IRON_FENCE);
-        ItemMeta iconMeta = icon.getItemMeta();
-        iconMeta.setDisplayName(ChatColor.RESET + "Play");
-        iconMeta.setLore(List.of(ChatColor.RESET + "Open Lobbies: 0/0"));
-        icon.setItemMeta(iconMeta);
-        POFGUI.setItem(13, icon);
-        selectionMenus.put("PillarsOfFortune", POFGUI);
+        {
+            POFGUI.setItem(0, exit);
+            ItemStack icon = new ItemStack(Material.IRON_FENCE);
+            ItemMeta iconMeta = icon.getItemMeta();
+            iconMeta.setDisplayName(ChatColor.RESET + "Play");
+            iconMeta.setLore(List.of(ChatColor.RESET + "Open Lobbies: 0/0"));
+            icon.setItemMeta(iconMeta);
+            POFGUI.setItem(13, icon);
+            selectionMenus.put("PillarsOfFortune", POFGUI);
+        }
+        Inventory tntRunGUI = Bukkit.createInventory(null, 27, "Tnt Run");
+        {
+            tntRunGUI.setItem(0, exit);
+            ItemStack icon = new ItemStack(Material.TNT);
+            ItemMeta iconMeta = icon.getItemMeta();
+            iconMeta.setDisplayName(ChatColor.RESET + "Play");
+            iconMeta.setLore(List.of(ChatColor.RESET + "Open Lobbies: 0/0"));
+            icon.setItemMeta(iconMeta);
+            tntRunGUI.setItem(13, icon);
+            selectionMenus.put("TntRun", tntRunGUI);
+        }
 
         // World container
         worldContainer = Bukkit.getWorldContainer();
@@ -234,18 +250,33 @@ public class Minigames extends JavaPlugin {
                 item.setAmount(Math.max(1, total));
                 bridgeGUI.setItem(10 + (2 * i), item);
             }
-            ItemStack pof = POFGUI.getItem(13);
-            ItemMeta pofMeta = pof.getItemMeta();
-            int open = 0, total = 0;
-            for (Game game : games.get("PillarsOfFortune").values()) {
-                if (game == null) continue;
-                if (game.hasSpace()) open++;
-                total++; 
+            {
+                ItemStack pof = POFGUI.getItem(13);
+                ItemMeta pofMeta = pof.getItemMeta();
+                int open = 0, total = 0;
+                for (Game game : games.get("PillarsOfFortune").values()) {
+                    if (game == null) continue;
+                    if (game.hasSpace()) open++;
+                    total++; 
+                }
+                pofMeta.setLore(List.of(ChatColor.RESET + "Open Lobbies: " + Integer.toString(open) + "/" + Integer.toString(total)));
+                pof.setItemMeta(pofMeta);
+                pof.setAmount(Math.max(1, total));
+                POFGUI.setItem(13, pof);
             }
-            pofMeta.setLore(List.of(ChatColor.RESET + "Open Lobbies: " + Integer.toString(open) + "/" + Integer.toString(total)));
-            pof.setItemMeta(pofMeta);
-            pof.setAmount(Math.max(1, total));
-            POFGUI.setItem(13, pof);
+            {
+                ItemStack tnt = tntRunGUI.getItem(13);
+                ItemMeta tntMeta = tnt.getItemMeta();
+                int open = 0, total = 0;
+                for (Game game : games.get("TntRun").values()) {
+                    if (game == null) continue;
+                    if (game.hasSpace()) open++;
+                    total++;
+                }
+                tntMeta.setLore(List.of(ChatColor.RESET + "Open Lobbies: " + Integer.toString(open) + "/" + Integer.toString(total)));
+                tnt.setItemMeta(tntMeta);
+                tntRunGUI.setItem(13, tnt);
+            }
         }, 0l, 20l);
     }
     
