@@ -56,17 +56,17 @@ public abstract class Game {
     private void copyFolder(File src, File dest) {
         dest.mkdirs();
         for (File f : src.listFiles()) {
-            if (f.isDirectory()) copyFolder(f, new File(dest, f.getName()));
+            String fName = f.getName();
+            if (f.isDirectory()) copyFolder(f, new File(dest, fName));
             else {
                 try {
-                    Files.copy(f.toPath(), new File(dest, f.getName()).toPath());
+                    if (fName.equals("uid.dat") || fName.equals("session.lock")) continue;
+                    Files.copy(f.toPath(), new File(dest, fName).toPath());
                 } catch (IOException e) {
                     log.warning("Error occurred while copying files: ".concat(e.getMessage()));
                 }
             }
         }
-        File uidFile = new File(dest, "uid.dat");
-        if (uidFile.exists()) uidFile.delete();
     }
     protected void deleteFolder(File folder) {
         File[] fileList = folder.listFiles();
@@ -128,4 +128,3 @@ public abstract class Game {
     protected void onPlayerTeleport(PlayerTeleportEvent event) {}
     protected void onPlayerRespawn(PlayerRespawnEvent event) {}
 }
-

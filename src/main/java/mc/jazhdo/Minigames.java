@@ -37,6 +37,7 @@ public class Minigames extends JavaPlugin {
     public final Map<String, Function<GameArgs, Game>> gameTypes = new HashMap<>();
     public final Map<String, Map<Integer, Game>> games = new HashMap<>();
     public final Map<String, Inventory> selectionMenus = new HashMap<>();
+    private final Map<String, ItemStack[]> gameIcons = new HashMap<>();
     private final List<String> worldDelete = new ArrayList<>();
     public ItemStack quickSelectionMenu, return2MainLobby, exit;
     public Location lobbySpawn;
@@ -86,7 +87,6 @@ public class Minigames extends JavaPlugin {
             // Command send used
             return true;
         }
-        
     }
 
     public void sendInfo(CommandSender player, String msg) {
@@ -144,6 +144,15 @@ public class Minigames extends JavaPlugin {
         player.setTotalExperience(0);
     }
 
+    private ItemStack generateGameIcon(Material displayItem) {
+        ItemStack icon = new ItemStack(displayItem);
+        ItemMeta iconMeta = icon.getItemMeta();
+        iconMeta.setDisplayName(ChatColor.RESET + "" + ChatColor.GREEN + "Play");
+        iconMeta.setLore(List.of(ChatColor.RESET + "Open Lobbies: 0/0"));
+        icon.setItemMeta(iconMeta);
+        return icon;
+    }
+
     @Override
     public void onEnable() {
         log = getLogger();
@@ -174,38 +183,35 @@ public class Minigames extends JavaPlugin {
         Inventory bridgeGUI = Bukkit.createInventory(null, 27, "Bridge");
         {
             bridgeGUI.setItem(0, exit);
+            ItemStack[] icons = new ItemStack[4];
             for (int i = 0; i < 4; i++) {
-                ItemStack gameType = new ItemStack(Material.SKULL_ITEM, 1, (short) 3);
-                ItemMeta gameTypeMeta = gameType.getItemMeta();
+                ItemStack icon = new ItemStack(Material.SKULL_ITEM, 1, (short) 3);
+                ItemMeta iconMeta = icon.getItemMeta();
                 String playersInType = Integer.toString(i + 1);
-                gameTypeMeta.setDisplayName(ChatColor.RESET + "Play " + playersInType + "v" + playersInType);
-                gameTypeMeta.setLore(List.of(ChatColor.RESET + "Open Lobbies: 0/0"));
-                gameType.setItemMeta(gameTypeMeta);
-                bridgeGUI.setItem(10 + (2 * i), gameType);
+                iconMeta.setDisplayName(ChatColor.RESET + "Play " + playersInType + "v" + playersInType);
+                iconMeta.setLore(List.of(ChatColor.RESET + "Open Lobbies: 0/0"));
+                icon.setItemMeta(iconMeta);
+                bridgeGUI.setItem(10 + (2 * i), icon);
+                icons[i] = icon;
             }
             selectionMenus.put("Bridge", bridgeGUI);
+            gameIcons.put("Bridge", icons);
         }
         Inventory POFGUI = Bukkit.createInventory(null, 27, "Pillars of Fortune");
         {
             POFGUI.setItem(0, exit);
-            ItemStack icon = new ItemStack(Material.IRON_FENCE);
-            ItemMeta iconMeta = icon.getItemMeta();
-            iconMeta.setDisplayName(ChatColor.RESET + "Play");
-            iconMeta.setLore(List.of(ChatColor.RESET + "Open Lobbies: 0/0"));
-            icon.setItemMeta(iconMeta);
+            ItemStack icon = generateGameIcon(Material.IRON_FENCE);
             POFGUI.setItem(13, icon);
             selectionMenus.put("PillarsOfFortune", POFGUI);
+            gameIcons.put("PillarsOfFortune", new ItemStack[]{icon});
         }
         Inventory tntRunGUI = Bukkit.createInventory(null, 27, "Tnt Run");
         {
             tntRunGUI.setItem(0, exit);
-            ItemStack icon = new ItemStack(Material.TNT);
-            ItemMeta iconMeta = icon.getItemMeta();
-            iconMeta.setDisplayName(ChatColor.RESET + "Play");
-            iconMeta.setLore(List.of(ChatColor.RESET + "Open Lobbies: 0/0"));
-            icon.setItemMeta(iconMeta);
+            ItemStack icon = generateGameIcon(Material.TNT);
             tntRunGUI.setItem(13, icon);
             selectionMenus.put("TntRun", tntRunGUI);
+            gameIcons.put("PillarsOfFortune", new ItemStack[]{icon});
         }
 
         // World container
@@ -232,52 +238,38 @@ public class Minigames extends JavaPlugin {
         // Open lobby count update loop
         scheduler.runTaskTimer(this, () -> {
             for (int i = 0; i < 4; i++) {
-                ItemStack item = bridgeGUI.getItem(10 + (2 * i));
-                ItemMeta meta = item.getItemMeta();
                 ByteArrayDataOutput metadata = ByteStreams.newDataOutput();
                 metadata.writeInt(i + 1);
-                byte[] bytes = metadata.toByteArray();
-                int open = 0, total = 0;
-                for (Game game : games.get("Bridge").values()) {
-                    if (game == null) continue;
-                    if (Arrays.equals(bytes, game.getMetadata())) {
-                        if (game.hasSpace()) open++;
-                        total++;
-                    }
-                }
-                meta.setLore(List.of(ChatColor.RESET + "Open Lobbies: " + Integer.toString(open) + "/" + Integer.toString(total)));
-                item.setItemMeta(meta);
-                item.setAmount(Math.max(1, total));
-                bridgeGUI.setItem(10 + (2 * i), item);
+                updateLobbyCount("Bridge", getAndCheck(bridgeGUI, 10 + (2 * i), gameIcons.get("Bridge")[i]), true, metadata.toByteArray());
             }
-            {
-                ItemStack pof = POFGUI.getItem(13);
-                ItemMeta pofMeta = pof.getItemMeta();
-                int open = 0, total = 0;
-                for (Game game : games.get("PillarsOfFortune").values()) {
-                    if (game == null) continue;
-                    if (game.hasSpace()) open++;
-                    total++; 
-                }
-                pofMeta.setLore(List.of(ChatColor.RESET + "Open Lobbies: " + Integer.toString(open) + "/" + Integer.toString(total)));
-                pof.setItemMeta(pofMeta);
-                pof.setAmount(Math.max(1, total));
-                POFGUI.setItem(13, pof);
-            }
-            {
-                ItemStack tnt = tntRunGUI.getItem(13);
-                ItemMeta tntMeta = tnt.getItemMeta();
-                int open = 0, total = 0;
-                for (Game game : games.get("TntRun").values()) {
-                    if (game == null) continue;
-                    if (game.hasSpace()) open++;
-                    total++;
-                }
-                tntMeta.setLore(List.of(ChatColor.RESET + "Open Lobbies: " + Integer.toString(open) + "/" + Integer.toString(total)));
-                tnt.setItemMeta(tntMeta);
-                tntRunGUI.setItem(13, tnt);
-            }
+            updateLobbyCount("PillarsOfFortune", getAndCheck(POFGUI, 13, gameIcons.get("PillarsOfFortune")[0]), false);
+            updateLobbyCount("TntRun", getAndCheck(tntRunGUI, 13, gameIcons.get("TntRun")[0]), false);
         }, 0l, 20l);
+    }
+    private void updateLobbyCount(String internalGameName, ItemStack gameIcon, boolean usesMetadata) {
+        updateLobbyCount(internalGameName, gameIcon, usesMetadata, new byte[0]);
+    }
+    private void updateLobbyCount(String internalGameName, ItemStack gameIcon, boolean usesMetadata, byte[] metadataBytes) {
+        ItemMeta gameIconMeta = gameIcon.getItemMeta();
+        int open = 0, total = 0;
+        for (Game game : games.get(internalGameName).values()) {
+            if (game == null) continue;
+            if (!usesMetadata || Arrays.equals(metadataBytes, game.getMetadata())) {
+                if (game.hasSpace()) open++;
+                total++;
+            }
+        }
+        gameIconMeta.setLore(List.of(ChatColor.RESET + "Open Lobbies: " + Integer.toString(open) + "/" + Integer.toString(total)));
+        gameIcon.setItemMeta(gameIconMeta);
+        gameIcon.setAmount(Math.clamp(total, 1, 64));
+    }
+    private ItemStack getAndCheck(Inventory GUI, int position, ItemStack backup) {
+        ItemStack icon = GUI.getItem(position);
+        if (icon == null || icon.getType() == Material.AIR) {
+            icon = backup;
+            GUI.setItem(position, icon);
+        }
+        return icon;
     }
     
     @Override

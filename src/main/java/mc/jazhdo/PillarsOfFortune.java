@@ -785,7 +785,6 @@ public class PillarsOfFortune extends Game {
 
             // Reset player
             plugin.resetPlayer(player);
-            player.setGameMode(GameMode.ADVENTURE);
         }
     }
 

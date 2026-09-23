@@ -1,6 +1,6 @@
 package mc.jazhdo;
 
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
 
@@ -25,13 +25,13 @@ import org.bukkit.scoreboard.Objective;
 import org.bukkit.scoreboard.Scoreboard;
 
 public class TntRun extends Game {
-    private final Random random = new Random();
     private enum State {
         QUEUEING,
         PLAYING,
         ENDGAME
     }
     private State state = State.QUEUEING;
+    private final HashSet<Player> alive = new HashSet<>(), dead = new HashSet<>();
     private final BossBar bossBar;
     private final Scoreboard scoreboard;
     private final Objective objective;
@@ -50,13 +50,13 @@ public class TntRun extends Game {
 
     @Override
     public boolean hasSpace() {
-        return state == State.QUEUEING && world.getPlayers().size() < 12;
+        return state == State.QUEUEING && alive.size() < 12;
     }
 
     @Override
     public String getMap() {
         List<String> maps = gameConfig.getStringList("maps");
-        return maps.get(random.nextInt(0, maps.size()));
+        return maps.get((new Random()).nextInt(0, maps.size()));
     }
 
     @Override
@@ -69,7 +69,7 @@ public class TntRun extends Game {
 
             @Override 
             public void run() {
-                if (world.getPlayers().size() < 2) {
+                if (alive.size() < 2) {
                     dots++;
                     if (dots == 4) dots = 1;
                     bossBar.setTitle(ChatColor.GOLD + "Waiting for players" + ".".repeat(dots));
@@ -80,13 +80,13 @@ public class TntRun extends Game {
                     this.cancel();
                 }
             }
-        }.runTaskTimer(plugin, 20l, 20l);
+        }.runTaskTimer(plugin, 0l, 20l);
     }
     private void enterCountdownLoop() {
         new BukkitRunnable() {
             @Override 
             public void run() {
-                if (world.getPlayers().size() > 1) {
+                if (alive.size() > 1) {
                     countdown--;
                     if (countdown == 0) {
                         // Remove floor to start
@@ -94,14 +94,15 @@ public class TntRun extends Game {
                         endX = gameConfig.getInt("floor-remove.corner2.x"), endY = gameConfig.getInt("floor-remove.corner2.y"), endZ = gameConfig.getInt("floor-remove.corner2.z");
                         for (int x = startX; x <= endX; x++) {
                             for (int y = startY; y <= endY; y++) {
-                                for (int z = startZ; z <= endZ; z++) world.getBlockAt(x, y, z).setType(Material.AIR);
+                                for (int z = startZ; z <= endZ; z++) world.getBlockAt(x, y, z).setType(Material.AIR, false);
                             }
                         }
 
                         // Setup new state
                         state = State.PLAYING;
                         bossBar.setTitle(ChatColor.GOLD + "Game duration: 00:00");
-                        
+                        for (Player p : world.getPlayers()) p.setGameMode(GameMode.SURVIVAL);
+                    
                         // Start game loop
                         gameLoop = new BukkitRunnable() {
                             int stopwatch = 0;
@@ -114,10 +115,17 @@ public class TntRun extends Game {
                             }
                         }.runTaskTimer(plugin, 20l, 20l);
                         this.cancel();
-                    } else bossBar.setTitle(ChatColor.GOLD + "Game starting in " + Integer.toString(countdown) + "s");
+                    } else {
+                        // Countdown and milestone alerts
+                        bossBar.setTitle(ChatColor.BLUE + "Game starting in " + Integer.toString(countdown) + " second" + (countdown != 1 ? "s" : ""));
+                        if (countdown % 10 == 0) broadcast(ChatColor.BLUE + "Game starting in " + Integer.toString(countdown) + " seconds.");
+                        else if (countdown == 1) broadcast(ChatColor.BLUE + "Game starting in 1 second.");
+                        else if (countdown < 10) broadcast(ChatColor.BLUE + "Game starting in " + Integer.toString(countdown) + " seconds.");
+                    }
                 } else {
                     broadcast(ChatColor.RED + "Not enough players, resetting countdown.");
                     bossBar.setTitle(ChatColor.GOLD + "Waiting for players.");
+                    this.cancel();
                     enterWaitingLoop();
                 }
             }
@@ -130,9 +138,12 @@ public class TntRun extends Game {
         // Only check for world changes
         if (event.getFrom().getWorld() == event.getTo().getWorld()) return;
 
-        // Join message
+        // Update playercount
         Player player = event.getPlayer();
-        broadcast(ChatColor.YELLOW + "Player " + player.getName() + " has joined. " + ChatColor.AQUA + "(" + ChatColor.GOLD + Integer.toString(world.getPlayers().size()) + "/12" + ChatColor.AQUA + ")");
+        alive.add(player);
+
+        // Join message
+        broadcast(ChatColor.YELLOW + "Player " + player.getName() + " has joined. " + ChatColor.AQUA + "(" + ChatColor.GOLD + Integer.toString(alive.size() + 1) + "/12" + ChatColor.AQUA + ")");
 
         // Update displays
         bossBar.addPlayer(player);
@@ -141,6 +152,13 @@ public class TntRun extends Game {
     }
     @Override
     public void attemptLeave(Player player) {
+        // Update playercount
+        if (state == State.QUEUEING) alive.remove(player);
+        else {
+            if (alive.contains(player)) alive.remove(player);
+            else dead.remove(player);
+        }
+
         // Leave message
         broadcast(ChatColor.YELLOW + "Player " + player.getName() + " has left.");
 
@@ -171,7 +189,7 @@ public class TntRun extends Game {
     }
 
     private void broadcast(String msg) {
-        Bukkit.broadcastMessage(ChatColor.GOLD + "[Tnt Run] " + ChatColor.WHITE + msg);
+        for (Player p : world.getPlayers()) p.sendMessage(ChatColor.GOLD + "[Tnt Run] " + ChatColor.WHITE + msg);
     }
     private void broadcastExcluding(String msg, Player excluded) {
         List<Player> playerlist = world.getPlayers();
@@ -179,26 +197,16 @@ public class TntRun extends Game {
         for (Player player : playerlist) player.sendMessage(msg);
     }
 
-    private List<Player> getList(GameMode gameMode) {
-        List<Player> playerlist = world.getPlayers(), newlist = new ArrayList<>();
-        for (Player player : playerlist) if (player.getGameMode() == gameMode) newlist.add(player);
-        return newlist;
-    }
-    private List<Player> getAliveList() {
-        return getList(GameMode.SURVIVAL);
-    }
-
     private void updateScoreboard() {
-        objective.getScore(ChatColor.GREEN + "Alive").setScore((state == State.QUEUEING) ? world.getPlayers().size() : getList(GameMode.SURVIVAL).size());
-        objective.getScore(ChatColor.RED + "Dead").setScore(getList(GameMode.SPECTATOR).size());
+        objective.getScore(ChatColor.GREEN + "Alive").setScore(alive.size());
+        objective.getScore(ChatColor.RED + "Dead").setScore(dead.size());
     }
 
     // End game
     private void checkEndGame() {
-        List<Player> playerlist = getAliveList();
-        if (playerlist.size() < 2) {
-            if (playerlist.isEmpty()) endGame(null);
-            else endGame(playerlist.getFirst());
+        if (alive.size() < 2) {
+            if (alive.isEmpty()) endGame(null);
+            else endGame(alive.iterator().next());
         }
     }
     private void endGame(Player winner) {
@@ -220,6 +228,7 @@ public class TntRun extends Game {
             public void run() {
                 if (countdown == 1) {
                     lobbyTeleportationCounter.removeAll();
+                    bossBar.removeAll();
                     for (Player player : world.getPlayers()) plugin.resetPlayer2Lobby(player);
                     resetWorld();
                 } else {
@@ -249,9 +258,7 @@ public class TntRun extends Game {
             case CRAMMING -> "entity cramming";
             default -> null;
         };
-        String mainDeathMessage = deathMessage == null ? "." : (" to " + ChatColor.GREEN + deathMessage + ".");
-        broadcastExcluding(ChatColor.DARK_RED + "Player " + ChatColor.RED + player.getName() + ChatColor.DARK_RED + " has died" + mainDeathMessage, player);
-        player.sendMessage(ChatColor.RED + "You" + ChatColor.DARK_RED + " have died" + mainDeathMessage);
+        broadcast(ChatColor.DARK_RED + "Player " + ChatColor.RED + player.getName() + ChatColor.DARK_RED + " has died" + (deathMessage == null ? "." : (" to " + ChatColor.GREEN + deathMessage + ".")));
 
         if (state == State.QUEUEING) event.setKeepInventory(true);
         plugin.scheduler.runTaskLater(plugin, () -> player.spigot().respawn(), 1l);
@@ -265,6 +272,9 @@ public class TntRun extends Game {
         plugin.scheduler.runTaskLater(plugin, () -> {
             event.getPlayer().setGameMode(state == State.QUEUEING ? GameMode.ADVENTURE : GameMode.SPECTATOR);
             if (state == State.PLAYING) {
+                Player player = event.getPlayer();
+                alive.remove(player);
+                dead.add(player);
                 checkEndGame();
                 updateScoreboard();
             }

@@ -89,8 +89,10 @@ pillarsoffortune:
 
   # Maps to select from
   maps:
-    - PillarsOfFortuneMap1
     - PillarsOfFortuneMap2
+    - PillarsOfFortuneMap3
+    - PillarsOfFortuneMap4
+    - PillarsOfFortuneMap5
 
   # Positions of the patterns of the tower ([-x, -z], [-x, z], [x, z], [x, -z], [z, x], [z, -x], [-z, x], [-z, -x])
   position:
@@ -108,7 +110,7 @@ tntrun:
     y: 91
     z: 0.5
     yaw: 0
-    pitch: -90
+    pitch: 90
 
   # Maps
   maps: 

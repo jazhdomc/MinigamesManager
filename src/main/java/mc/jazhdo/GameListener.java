@@ -9,6 +9,7 @@ import java.util.function.Function;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
+import org.bukkit.GameMode;
 import org.bukkit.Material;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
@@ -18,7 +19,6 @@ import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
-import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerDropItemEvent;
@@ -33,6 +33,7 @@ import org.bukkit.event.world.WorldUnloadEvent;
 import org.bukkit.inventory.EquipmentSlot;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
 import org.bukkit.inventory.meta.ItemMeta;
 
 import com.google.common.io.ByteArrayDataOutput;
@@ -40,7 +41,7 @@ import com.google.common.io.ByteStreams;
 
 public class GameListener implements Listener {
     private final Minigames plugin;
-    private final ItemStack leave, back2QuickSelect;
+    private final ItemStack leave;
     private final Inventory quickSelectInv;
 
     public GameListener(Minigames plugin) {
@@ -52,13 +53,6 @@ public class GameListener implements Listener {
         leaveMeta.setDisplayName(ChatColor.RESET + "" + ChatColor.RED + "Leave");
         leaveMeta.setLore(List.of(ChatColor.RESET + "Leaves the current minigame."));
         leave.setItemMeta(leaveMeta);
-
-        // Back button (unused)
-        back2QuickSelect = new ItemStack(Material.BARRIER);
-        ItemMeta back2QuickSelectMeta = back2QuickSelect.getItemMeta();
-        back2QuickSelectMeta.setDisplayName(ChatColor.RESET + "Back");
-        back2QuickSelectMeta.setLore(List.of(ChatColor.RESET + "Navigates to the previous page."));
-        back2QuickSelect.setItemMeta(back2QuickSelectMeta);
 
         // Quick select
         quickSelectInv = Bukkit.createInventory(null, 27, "Game Quick Select");
@@ -163,19 +157,14 @@ public class GameListener implements Listener {
             int slot = event.getSlot();
             if (slot == 0) {
                 if (currentItem.isSimilar(plugin.exit)) player.closeInventory();
-                else if (currentItem.isSimilar(back2QuickSelect)) {
-                    // Unused item
-                }
                 return;
             }
 
             // Get game details
-            String gameName;
+            String invName = inv.getName(), gameName = invName.replaceAll(" ", "");
             byte[] metadata;
-            switch (inv.getName()) {
+            switch (invName) {
                 case "Bridge" -> {
-                    gameName = "Bridge";
-
                     // Calculate team size and use it for metadata
                     ByteArrayDataOutput output = ByteStreams.newDataOutput();
                     int teamSize = switch (slot) {
@@ -189,12 +178,7 @@ public class GameListener implements Listener {
                     output.writeInt(teamSize);
                     metadata = output.toByteArray();
                 }
-                case "Pillars of Fortune" -> {
-                    gameName = "PillarsOfFortune";
-                    metadata = new byte[0];
-                }
-                case "Tnt Run" -> {
-                    gameName = "TntRun";
+                case "Pillars of Fortune", "Tnt Run" -> {
                     metadata = new byte[0];
                 }
                 default -> {
@@ -232,21 +216,22 @@ public class GameListener implements Listener {
             }
 
             // Add exit button
-            player.getInventory().setItem(8, leave);
+            PlayerInventory playerInv = player.getInventory();
+            playerInv.clear();
+            playerInv.setItem(8, leave);
+            player.setGameMode(GameMode.ADVENTURE);
         } else if (currentItem.isSimilar(plugin.quickSelectionMenu)) {
-            if (event.getClick() != ClickType.NUMBER_KEY) player.openInventory(quickSelectInv);
+            player.openInventory(quickSelectInv);
         } else if (inv.equals(quickSelectInv)) {
-            if (event.getClick() != ClickType.NUMBER_KEY) {
-                switch (event.getSlot()) {
-                    case 11 -> player.openInventory(plugin.selectionMenus.get("Bridge"));
-                    case 13 -> player.openInventory(plugin.selectionMenus.get("PillarsOfFortune"));
-                    case 15 -> player.openInventory(plugin.selectionMenus.get("TntRun"));
-                }
+            switch (event.getSlot()) {
+                case 11 -> player.openInventory(plugin.selectionMenus.get("Bridge"));
+                case 13 -> player.openInventory(plugin.selectionMenus.get("PillarsOfFortune"));
+                case 15 -> player.openInventory(plugin.selectionMenus.get("TntRun"));
             }
         } else if (currentItem.isSimilar(plugin.return2MainLobby)) {
-            if (event.getClick() != ClickType.NUMBER_KEY) player.chat("/server lobby");
+            player.sendMessage("Currently broken. Use the command \"/hub\" return to the main lobby.");
         } else if (currentItem.isSimilar(leave)) {
-            if (event.getClick() != ClickType.NUMBER_KEY) runIfNonNullGetGame(player.getWorld(), g -> g.leaveGame(player));
+            runIfNonNullGetGame(player.getWorld(), g -> g.leaveGame(player));
         } else return;
         event.setCancelled(true);
     }
