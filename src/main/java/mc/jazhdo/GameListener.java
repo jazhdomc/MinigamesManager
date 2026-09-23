@@ -18,6 +18,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
@@ -161,10 +162,12 @@ public class GameListener implements Listener {
             }
 
             // Get game details
-            String invName = inv.getName(), gameName = invName.replaceAll(" ", "");
+            String invName = inv.getName(), gameName;
             byte[] metadata;
             switch (invName) {
                 case "Bridge" -> {
+                    gameName = "Bridge";
+
                     // Calculate team size and use it for metadata
                     ByteArrayDataOutput output = ByteStreams.newDataOutput();
                     int teamSize = switch (slot) {
@@ -178,7 +181,12 @@ public class GameListener implements Listener {
                     output.writeInt(teamSize);
                     metadata = output.toByteArray();
                 }
-                case "Pillars of Fortune", "Tnt Run" -> {
+                case "Pillars of Fortune" -> {
+                    gameName = "PillarsOfFortune";
+                    metadata = new byte[0];
+                }
+                case "Tnt Run" -> {
+                    gameName = "TntRun";
                     metadata = new byte[0];
                 }
                 default -> {
@@ -191,7 +199,7 @@ public class GameListener implements Listener {
                 // Get into an existing game if there is space in one
                 Map<Integer, Game> gameList = plugin.games.get(gameName);
                 for (Game game : gameList.values()) {
-                    if (game.hasSpace() && Arrays.equals(game.getMetadata(), metadata)) {
+                    if (game != null && game.hasSpace() && Arrays.equals(game.getMetadata(), metadata)) {
                         player.teleport(game.getSpawnLocation());
                         break getAGame;
                     }
@@ -220,19 +228,16 @@ public class GameListener implements Listener {
             playerInv.clear();
             playerInv.setItem(8, leave);
             player.setGameMode(GameMode.ADVENTURE);
-        } else if (currentItem.isSimilar(plugin.quickSelectionMenu)) {
-            player.openInventory(quickSelectInv);
-        } else if (inv.equals(quickSelectInv)) {
+        } else if (currentItem.isSimilar(plugin.quickSelectionMenu)) player.openInventory(quickSelectInv);
+        else if (inv.equals(quickSelectInv)) {
             switch (event.getSlot()) {
                 case 11 -> player.openInventory(plugin.selectionMenus.get("Bridge"));
                 case 13 -> player.openInventory(plugin.selectionMenus.get("PillarsOfFortune"));
                 case 15 -> player.openInventory(plugin.selectionMenus.get("TntRun"));
             }
-        } else if (currentItem.isSimilar(plugin.return2MainLobby)) {
-            player.sendMessage("Currently broken. Use the command \"/hub\" return to the main lobby.");
-        } else if (currentItem.isSimilar(leave)) {
-            runIfNonNullGetGame(player.getWorld(), g -> g.leaveGame(player));
-        } else return;
+        } else if (currentItem.isSimilar(plugin.return2MainLobby)) player.sendMessage("Currently broken. Use the command \"/hub\" return to the main lobby.");
+        else if (currentItem.isSimilar(leave)) runIfNonNullGetGame(player.getWorld(), g -> g.leaveGame(player));
+        else return;
         event.setCancelled(true);
     }
 
@@ -244,7 +249,7 @@ public class GameListener implements Listener {
         if (itemStack == null) return;
         Player player = event.getPlayer();
         if (itemStack.isSimilar(plugin.quickSelectionMenu)) player.openInventory(quickSelectInv);
-        else if (itemStack.isSimilar(plugin.return2MainLobby)) player.chat("/server lobby");
+        else if (itemStack.isSimilar(plugin.return2MainLobby)) player.sendMessage("Currently broken. Use the command \"/hub\" return to the main lobby.");
         else if (itemStack.isSimilar(leave)) runIfNonNullGetGame(player.getWorld(), g -> g.leaveGame(player));
         else return;
         event.setCancelled(true);
@@ -273,6 +278,11 @@ public class GameListener implements Listener {
     @EventHandler
     public void onPlayerTeleport(PlayerTeleportEvent event) {
         runIfNonNullGetGame(event.getTo().getWorld(), g -> g.onPlayerTeleport(event));
+    }
+
+    @EventHandler 
+    public void onEntityDamage(EntityDamageEvent event) {
+        runIfNonNullGetGame(event.getEntity().getWorld(), g -> g.onEntityDamage(event));
     }
 
     private void deleteFolder(File folder) {

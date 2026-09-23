@@ -18,6 +18,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
+import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.AsyncPlayerChatEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
@@ -127,4 +128,5 @@ public abstract class Game {
     protected void onAsyncPlayerChat(AsyncPlayerChatEvent event) {}
     protected void onPlayerTeleport(PlayerTeleportEvent event) {}
     protected void onPlayerRespawn(PlayerRespawnEvent event) {}
+    protected void onEntityDamage(EntityDamageEvent event) {}
 }

@@ -211,7 +211,7 @@ public class Minigames extends JavaPlugin {
             ItemStack icon = generateGameIcon(Material.TNT);
             tntRunGUI.setItem(13, icon);
             selectionMenus.put("TntRun", tntRunGUI);
-            gameIcons.put("PillarsOfFortune", new ItemStack[]{icon});
+            gameIcons.put("TntRun", new ItemStack[]{icon});
         }
 
         // World container
@@ -244,7 +244,7 @@ public class Minigames extends JavaPlugin {
             }
             updateLobbyCount("PillarsOfFortune", getAndCheck(POFGUI, 13, gameIcons.get("PillarsOfFortune")[0]), false);
             updateLobbyCount("TntRun", getAndCheck(tntRunGUI, 13, gameIcons.get("TntRun")[0]), false);
-        }, 0l, 20l);
+        }, 20l, 20l);
     }
     private void updateLobbyCount(String internalGameName, ItemStack gameIcon, boolean usesMetadata) {
         updateLobbyCount(internalGameName, gameIcon, usesMetadata, new byte[0]);

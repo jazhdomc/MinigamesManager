@@ -13,7 +13,9 @@ import org.bukkit.boss.BarColor;
 import org.bukkit.boss.BarStyle;
 import org.bukkit.boss.BossBar;
 import org.bukkit.entity.Player;
+import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
+import org.bukkit.event.entity.EntityDamageEvent.DamageCause;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -143,12 +145,15 @@ public class TntRun extends Game {
         alive.add(player);
 
         // Join message
-        broadcast(ChatColor.YELLOW + "Player " + player.getName() + " has joined. " + ChatColor.AQUA + "(" + ChatColor.GOLD + Integer.toString(alive.size() + 1) + "/12" + ChatColor.AQUA + ")");
+        broadcast(ChatColor.YELLOW + "Player " + player.getName() + " has joined. " + ChatColor.AQUA + "(" + ChatColor.GOLD + Integer.toString(alive.size()) + "/12" + ChatColor.AQUA + ")");
 
         // Update displays
         bossBar.addPlayer(player);
         updateScoreboard();
         player.setScoreboard(scoreboard);
+
+        // Set initial player state
+        player.setGameMode(GameMode.ADVENTURE);
     }
     @Override
     public void attemptLeave(Player player) {
@@ -279,5 +284,18 @@ public class TntRun extends Game {
                 updateScoreboard();
             }
         }, 1l);
+    }
+
+    // Damage managers
+    @Override 
+    public void onEntityDamage(EntityDamageEvent event) {
+        // Cancel fall damage (to prevent death by just falling)
+        if (event.getCause() == DamageCause.FALL) event.setCancelled(true);
+        else if (state == State.QUEUEING) event.setCancelled(true);
+    }
+    @Override 
+    public void onEntityDamageByEntity(EntityDamageByEntityEvent event) {
+        // Cancel queueing attacks
+        if (state == State.QUEUEING) event.setCancelled(true);
     }
 }
